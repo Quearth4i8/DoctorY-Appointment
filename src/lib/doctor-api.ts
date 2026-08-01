@@ -24,7 +24,52 @@ import type { Appointment, PatientAdminInput, SafePatient } from "@/types";
  * would null out the clinical fields it does not know about.
  */
 
-const BASE = process.env.DOCTOR_API_URL ?? "http://127.0.0.1:8765";
+/**
+ * Where the doctor's machine currently is.
+ *
+ * With no domain, the tunnel address changes on every restart, so the desktop
+ * app publishes it to Supabase and we look it up rather than pinning it in the
+ * environment. DOCTOR_API_URL still wins when set — that is the local/dev case
+ * and an escape hatch if the lookup ever has to be bypassed.
+ *
+ * Cached briefly: this is consulted on nearly every request, and the address
+ * only changes when the doctor's PC restarts.
+ */
+const FALLBACK_BASE = process.env.DOCTOR_API_URL ?? "http://127.0.0.1:8765";
+const ENDPOINT_TTL_MS = 30_000;
+
+let cachedBase: { url: string; at: number } | null = null;
+
+async function resolveBase(): Promise<string> {
+  if (process.env.DOCTOR_API_URL) return process.env.DOCTOR_API_URL;
+
+  if (cachedBase && Date.now() - cachedBase.at < ENDPOINT_TTL_MS) {
+    return cachedBase.url;
+  }
+
+  try {
+    // Imported lazily so this module stays usable in contexts without cookies.
+    const { createClient } = await import("@/lib/supabase/server");
+    const { data } = await createClient()
+      .from("doctors")
+      .select("remote_api_url")
+      .neq("remote_api_url", "")
+      .order("remote_seen_at", { ascending: false })
+      .limit(1)
+      .maybeSingle();
+
+    const url = (data as { remote_api_url?: string } | null)?.remote_api_url;
+    if (url) {
+      cachedBase = { url: url.replace(/\/+$/, ""), at: Date.now() };
+      return cachedBase.url;
+    }
+  } catch {
+    // Fall through — an unreachable lookup should surface as "cabinet
+    // injoignable", not as a different kind of crash.
+  }
+
+  return FALLBACK_BASE;
+}
 
 export class DoctorApiError extends Error {
   status: number;
@@ -49,18 +94,27 @@ type apiInit = {
 };
 
 async function call(path: string, init: apiInit = {}): Promise<unknown> {
-  const url = new URL(`${BASE}${path}`);
+  const url = new URL(`${await resolveBase()}${path}`);
   if (init.query) {
     for (const [k, v] of Object.entries(init.query)) {
       if (v !== undefined && v !== "") url.searchParams.set(k, String(v));
     }
   }
 
+  // Deployed, this app reaches the doctor's machine through a tunnel, and the
+  // tunnel-facing port refuses anything without this token. Locally the API
+  // listens on an unauthenticated port and simply ignores the header.
+  const headers: Record<string, string> = {};
+  if (init.body) headers["Content-Type"] = "application/json";
+  if (process.env.DOCTOR_API_TOKEN) {
+    headers["x-doctory-token"] = process.env.DOCTOR_API_TOKEN;
+  }
+
   let res: Response;
   try {
     res = await fetch(url, {
       method: init.method ?? "GET",
-      headers: init.body ? { "Content-Type": "application/json" } : undefined,
+      headers,
       body: init.body ? JSON.stringify(init.body) : undefined,
       cache: "no-store",
     });
