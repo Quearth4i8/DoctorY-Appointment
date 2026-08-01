@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 
+import { resolveStaffDoctorId } from "@/lib/api-response";
 import { createClient, getStaff } from "@/lib/supabase/server";
 import type { RequestStatus } from "@/types";
 
@@ -32,12 +33,21 @@ export async function GET(req: Request) {
     .order("created_at", { ascending: false })
     .limit(200);
 
-  // Scoping to the staff member's doctor is enforced by RLS
-  // (can_access_request); repeating it here keeps the query honest about what
-  // it is asking for rather than relying on the database to silently drop rows.
-  if (staff.doctor_id) {
-    query = query.or(`doctor_id.eq.${staff.doctor_id},doctor_id.is.null`);
+  // Scoping is enforced by RLS (can_access_request); repeating it here keeps
+  // the query honest about what it is asking for rather than relying on the
+  // database to silently drop rows.
+  //
+  // Unattributed requests are NOT included: `doctor_id is null` used to be an
+  // escape hatch that showed one cabinet's requests to another cabinet's
+  // secretary. Every request belongs to a practice now.
+  const doctorId = await resolveStaffDoctorId(staff).catch(() => null);
+  if (!doctorId) {
+    return NextResponse.json(
+      { error: "Aucun cabinet n'est associé à ce compte." },
+      { status: 503 },
+    );
   }
+  query = query.eq("doctor_id", doctorId);
 
   if (status && status !== "toutes") query = query.eq("status", status);
 

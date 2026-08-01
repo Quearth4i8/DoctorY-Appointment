@@ -21,10 +21,12 @@ type Hint = {
 };
 
 /**
- * Links this practice's website to the doctor's desktop app.
+ * Links this account to a doctor, using the key his app generates.
  *
- * The doctor's app generates a key and shows it in its settings; pasting it
- * here is the whole pairing. Pasting a new one replaces the old.
+ * Pasting a key that already belongs to a practice MOVES this account to it —
+ * agenda, patients and demandes all change together, and the previous practice
+ * is left untouched. Pasting a key nobody holds registers it for the practice
+ * this account already works for, which is what a reinstall looks like.
  *
  * The stored key is shown as a fingerprint only — dots plus its last four
  * characters. The full value is never sent to the browser: it opens the
@@ -60,7 +62,7 @@ export function PairingCard() {
       return;
     }
     setSaving(true);
-    const { error } = await createClient().rpc("link_doctor_endpoint", {
+    const { data, error } = await createClient().rpc("link_doctor_endpoint", {
       p_key: value,
     });
     setSaving(false);
@@ -68,11 +70,9 @@ export function PairingCard() {
     if (error) {
       const raised = `${error.message} ${error.details ?? ""}`;
       toast.error(
-        raised.includes("KEY_IN_USE")
-          ? "Cette clé appartient déjà à un autre cabinet."
-          : raised.includes("INVALID_KEY")
-            ? "Clé invalide."
-            : "Impossible d'enregistrer la clé.",
+        raised.includes("INVALID_KEY")
+          ? "Clé invalide."
+          : "Impossible d'enregistrer la clé.",
       );
       return;
     }
@@ -80,11 +80,17 @@ export function PairingCard() {
     setKey("");
     setRevealed(false);
     await load();
-    toast.success(
-      hint?.has_key
-        ? "Clé remplacée. L'ancienne ne fonctionne plus."
-        : "Clé enregistrée. L'application du médecin va se connecter.",
-    );
+    // 'rebound' means the key belonged to another practice and this account has
+    // moved to it — agenda, patients and demandes all change with it.
+    if (data === "rebound") {
+      // Every cached page belongs to the previous practice — agenda, patients,
+      // demandes. Reload rather than refresh: nothing from before should
+      // survive a change of cabinet.
+      toast.success("Compte rattaché à ce cabinet.");
+      window.location.reload();
+      return;
+    }
+    toast.success("Clé enregistrée. L'application du médecin va se connecter.");
     router.refresh();
   }
 
@@ -180,7 +186,7 @@ export function PairingCard() {
 
       <p className="mt-3 text-xs leading-relaxed text-muted-foreground">
         {hint?.has_key
-          ? "Enregistrer une nouvelle clé remplace l'ancienne : celle-ci cesse aussitôt de fonctionner."
+          ? "Saisir la clé d'un autre médecin rattache ce compte à son cabinet : vous verrez son agenda, ses patients et ses demandes à la place des actuels."
           : "Le médecin trouve cette clé dans son application, section « Site de rendez-vous »."}
       </p>
     </section>
