@@ -25,51 +25,65 @@ import type { Appointment, PatientAdminInput, SafePatient } from "@/types";
  */
 
 /**
- * Where the doctor's machine currently is.
+ * Where a given doctor's machine is, and the key that opens it.
  *
- * With no domain, the tunnel address changes on every restart, so the desktop
- * app publishes it to Supabase and we look it up rather than pinning it in the
- * environment. DOCTOR_API_URL still wins when set — that is the local/dev case
- * and an escape hatch if the lookup ever has to be bypassed.
+ * Every practice runs its own desktop app behind its own tunnel, so there is no
+ * single address: the endpoint is resolved per doctor. `get_doctor_endpoint` is
+ * gated by SERVER_API_SECRET rather than a service-role key, because the worst
+ * a leak of that secret can do is expose endpoint credentials instead of the
+ * whole database.
  *
- * Cached briefly: this is consulted on nearly every request, and the address
- * only changes when the doctor's PC restarts.
+ * DOCTOR_API_URL still wins when set — that is local development, where the
+ * backend listens unauthenticated on 127.0.0.1 and there is nothing to resolve.
  */
-const FALLBACK_BASE = process.env.DOCTOR_API_URL ?? "http://127.0.0.1:8765";
+export type DoctorEndpoint = { url: string; token: string };
+
 const ENDPOINT_TTL_MS = 30_000;
+const endpointCache = new Map<string, { value: DoctorEndpoint; at: number }>();
 
-let cachedBase: { url: string; at: number } | null = null;
-
-async function resolveBase(): Promise<string> {
-  if (process.env.DOCTOR_API_URL) return process.env.DOCTOR_API_URL;
-
-  if (cachedBase && Date.now() - cachedBase.at < ENDPOINT_TTL_MS) {
-    return cachedBase.url;
-  }
-
-  try {
-    // Imported lazily so this module stays usable in contexts without cookies.
-    const { createClient } = await import("@/lib/supabase/server");
-    const { data } = await createClient()
-      .from("doctors")
-      .select("remote_api_url")
-      .neq("remote_api_url", "")
-      .order("remote_seen_at", { ascending: false })
-      .limit(1)
-      .maybeSingle();
-
-    const url = (data as { remote_api_url?: string } | null)?.remote_api_url;
-    if (url) {
-      cachedBase = { url: url.replace(/\/+$/, ""), at: Date.now() };
-      return cachedBase.url;
-    }
-  } catch {
-    // Fall through — an unreachable lookup should surface as "cabinet
-    // injoignable", not as a different kind of crash.
-  }
-
-  return FALLBACK_BASE;
+function devEndpoint(): DoctorEndpoint | null {
+  const url = process.env.DOCTOR_API_URL;
+  if (!url) return null;
+  return { url, token: process.env.DOCTOR_API_TOKEN ?? "" };
 }
+
+async function resolveEndpoint(doctorId: string): Promise<DoctorEndpoint> {
+  const dev = devEndpoint();
+  if (dev) return dev;
+
+  const cached = endpointCache.get(doctorId);
+  if (cached && Date.now() - cached.at < ENDPOINT_TTL_MS) return cached.value;
+
+  const secret = process.env.SERVER_API_SECRET;
+  if (!secret) {
+    console.error(
+      "[doctor-api] SERVER_API_SECRET is not set — cannot look up any practice's endpoint.",
+    );
+    throw new DoctorApiError(503, UNREACHABLE, "BACKEND_UNREACHABLE");
+  }
+
+  const { createClient } = await import("@/lib/supabase/server");
+  const { data, error } = await createClient().rpc("get_doctor_endpoint", {
+    p_doctor_id: doctorId,
+    p_server_secret: secret,
+  });
+
+  const row = Array.isArray(data) ? data[0] : data;
+  const url = (row as { api_url?: string } | null)?.api_url ?? "";
+  const token = (row as { api_token?: string } | null)?.api_token ?? "";
+
+  if (error || !url) {
+    // Never paired, or the app has not registered since its last restart.
+    throw new DoctorApiError(503, UNREACHABLE, "BACKEND_UNREACHABLE");
+  }
+
+  const value = { url: url.replace(/\/+$/, ""), token };
+  endpointCache.set(doctorId, { value, at: Date.now() });
+  return value;
+}
+
+const UNREACHABLE =
+  "Connexion impossible. Vérifiez que l'application du médecin est ouverte.";
 
 export class DoctorApiError extends Error {
   status: number;
@@ -93,22 +107,25 @@ type apiInit = {
   query?: Record<string, string | number | undefined>;
 };
 
-async function call(path: string, init: apiInit = {}): Promise<unknown> {
-  const url = new URL(`${await resolveBase()}${path}`);
+async function call(
+  doctorId: string,
+  path: string,
+  init: apiInit = {},
+): Promise<unknown> {
+  const endpoint = await resolveEndpoint(doctorId);
+  const url = new URL(`${endpoint.url}${path}`);
   if (init.query) {
     for (const [k, v] of Object.entries(init.query)) {
       if (v !== undefined && v !== "") url.searchParams.set(k, String(v));
     }
   }
 
-  // Deployed, this app reaches the doctor's machine through a tunnel, and the
-  // tunnel-facing port refuses anything without this token. Locally the API
-  // listens on an unauthenticated port and simply ignores the header.
+  // Deployed, this reaches the practice through its tunnel, whose port refuses
+  // anything without that practice's key. Locally the backend listens
+  // unauthenticated on 127.0.0.1 and simply ignores the header.
   const headers: Record<string, string> = {};
   if (init.body) headers["Content-Type"] = "application/json";
-  if (process.env.DOCTOR_API_TOKEN) {
-    headers["x-doctory-token"] = process.env.DOCTOR_API_TOKEN;
-  }
+  if (endpoint.token) headers["x-doctory-token"] = endpoint.token;
 
   let res: Response;
   try {
@@ -119,11 +136,7 @@ async function call(path: string, init: apiInit = {}): Promise<unknown> {
       cache: "no-store",
     });
   } catch {
-    throw new DoctorApiError(
-      503,
-      "Connexion impossible. Vérifiez que l'application du médecin est ouverte.",
-      "BACKEND_UNREACHABLE",
-    );
+    throw new DoctorApiError(503, UNREACHABLE, "BACKEND_UNREACHABLE");
   }
 
   const text = await res.text();
@@ -182,8 +195,11 @@ function projectPatient(raw: Record<string, unknown>): SafePatient {
 
 // ─── Patients (allowed: list, create, administrative update — never delete) ──
 
-export async function searchPatients(search: string): Promise<SafePatient[]> {
-  const rows = (await call("/api/patients", { query: { search } })) as Record<
+export async function searchPatients(
+  doctorId: string,
+  search: string,
+): Promise<SafePatient[]> {
+  const rows = (await call(doctorId, "/api/patients", { query: { search } })) as Record<
     string,
     unknown
   >[];
@@ -202,6 +218,7 @@ export async function searchPatients(search: string): Promise<SafePatient[]> {
  * would otherwise have to retype. It is never returned to the browser.
  */
 export async function findPatientByDossier(
+  doctorId: string,
   dossier: string,
   phone: string,
 ): Promise<SafePatient | null> {
@@ -210,7 +227,7 @@ export async function findPatientByDossier(
   if (!wanted || wantedPhone.length < 6) return null;
 
   // The backend search is a LIKE across several columns, so match exactly here.
-  const rows = await searchPatients(dossier.trim());
+  const rows = await searchPatients(doctorId, dossier.trim());
   return (
     rows.find(
       (p) =>
@@ -257,9 +274,10 @@ function adminPayload(input: PatientAdminInput) {
 }
 
 export async function createPatient(
+  doctorId: string,
   input: PatientAdminInput & { force?: boolean },
 ): Promise<{ id: number }> {
-  const data = (await call("/api/patients", {
+  const data = (await call(doctorId, "/api/patients", {
     method: "POST",
     body: { ...adminPayload(input), force: input.force ?? false },
   })) as { id: number };
@@ -271,10 +289,11 @@ export async function createPatient(
  * only the columns above — the doctor's clinical fields are left untouched.
  */
 export async function updatePatientAdmin(
+  doctorId: string,
   id: number,
   input: PatientAdminInput,
 ): Promise<void> {
-  await call(`/api/patients/${id}/admin`, {
+  await call(doctorId, `/api/patients/${id}/admin`, {
     method: "PATCH",
     body: adminPayload(input),
   });
@@ -283,10 +302,11 @@ export async function updatePatientAdmin(
 // ─── Appointments ─────────────────────────────────────────────────────────────
 
 export async function listAppointmentsRange(
+  doctorId: string,
   from: string,
   to: string,
 ): Promise<Appointment[]> {
-  const rows = (await call("/api/appointments", {
+  const rows = (await call(doctorId, "/api/appointments", {
     query: { from, to },
   })) as Appointment[];
   return rows ?? [];
@@ -306,10 +326,11 @@ export type BusyRange = { start: string; end: string };
  * Cancelled appointments free their slot, so they are dropped.
  */
 export async function listBusyRanges(
+  doctorId: string,
   from: string,
   to: string,
 ): Promise<BusyRange[]> {
-  const rows = (await call("/api/appointments", {
+  const rows = (await call(doctorId, "/api/appointments", {
     query: { from, to },
   })) as Record<string, unknown>[];
 
@@ -327,14 +348,14 @@ export async function listBusyRanges(
     .filter((r) => !Number.isNaN(Date.parse(r.start)));
 }
 
-export async function createAppointment(input: {
+export async function createAppointment(doctorId: string, input: {
   patient_id: number;
   appointment_datetime: string;
   duration_minutes: number;
   notes?: string | null;
   status?: string;
 }): Promise<{ id: number }> {
-  const data = (await call("/api/appointments", {
+  const data = (await call(doctorId, "/api/appointments", {
     method: "POST",
     body: {
       patient_id: input.patient_id,
@@ -348,6 +369,7 @@ export async function createAppointment(input: {
 }
 
 export async function updateAppointment(
+  doctorId: string,
   id: number,
   input: {
     appointment_datetime: string;
@@ -356,7 +378,7 @@ export async function updateAppointment(
     notes?: string | null;
   },
 ): Promise<void> {
-  await call(`/api/appointments/${id}`, {
+  await call(doctorId, `/api/appointments/${id}`, {
     method: "PUT",
     body: {
       appointment_datetime: input.appointment_datetime,
@@ -368,15 +390,19 @@ export async function updateAppointment(
 }
 
 export async function updateAppointmentStatus(
+  doctorId: string,
   id: number,
   status: string,
 ): Promise<void> {
-  await call(`/api/appointments/${id}/status`, {
+  await call(doctorId, `/api/appointments/${id}/status`, {
     method: "PATCH",
     body: { status },
   });
 }
 
-export async function deleteAppointment(id: number): Promise<void> {
-  await call(`/api/appointments/${id}`, { method: "DELETE" });
+export async function deleteAppointment(
+  doctorId: string,
+  id: number,
+): Promise<void> {
+  await call(doctorId, `/api/appointments/${id}`, { method: "DELETE" });
 }

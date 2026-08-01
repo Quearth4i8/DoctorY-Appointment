@@ -17,7 +17,7 @@ export async function PATCH(
 ) {
   const body = (await req.json().catch(() => ({}))) as PatientAdminInput;
 
-  return handleStaff(() => {
+  return handleStaff((doctorId) => {
     const id = Number(params.id);
     if (!Number.isFinite(id)) {
       throw new DoctorApiError(400, "Identifiant invalide.");
@@ -25,7 +25,7 @@ export async function PATCH(
     if (!body.last_name?.trim()) {
       throw new DoctorApiError(400, "Le nom est obligatoire.");
     }
-    return updatePatientAdmin(id, {
+    return updatePatientAdmin(doctorId, id, {
       last_name: body.last_name.trim(),
       first_name: body.first_name?.trim() ?? "",
       father_name: body.father_name?.trim() ?? "",

@@ -86,6 +86,10 @@ export type Doctor = {
   hours: DayHours[];
   tariffs: Tariff[];
   is_published: boolean;
+  /** Current tunnel address published by the desktop app. Never the key. */
+  remote_api_url: string;
+  /** Last time the desktop app announced itself. */
+  remote_seen_at: string | null;
 };
 
 export const DAY_LABELS = [

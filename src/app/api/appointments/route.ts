@@ -11,11 +11,11 @@ export async function GET(req: Request) {
   const params = new URL(req.url).searchParams;
   const from = params.get("from");
   const to = params.get("to");
-  return handleStaff(() => {
+  return handleStaff((doctorId) => {
     if (!from || !to) {
       throw new DoctorApiError(400, "Plage de dates manquante.");
     }
-    return listAppointmentsRange(from, to);
+    return listAppointmentsRange(doctorId, from, to);
   });
 }
 
@@ -28,11 +28,11 @@ export async function POST(req: Request) {
     status?: string;
   };
 
-  return handleStaff(() => {
+  return handleStaff((doctorId) => {
     if (!body.patient_id || !body.appointment_datetime) {
       throw new DoctorApiError(400, "Patient et date/heure obligatoires.");
     }
-    return createAppointment({
+    return createAppointment(doctorId, {
       patient_id: body.patient_id,
       appointment_datetime: body.appointment_datetime,
       duration_minutes: body.duration_minutes ?? 30,

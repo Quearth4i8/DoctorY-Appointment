@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 
 import { createClient, getStaff } from "@/lib/supabase/server";
+import { resolveStaffDoctorId } from "@/lib/api-response";
 import {
   createAppointment,
   createPatient,
@@ -52,6 +53,12 @@ export async function POST(
     );
   }
 
+  // The request carries the practice it was made for; fall back to the staff
+  // member's own so requests predating that column still work.
+  const doctorId =
+    (request as { doctor_id?: string | null }).doctor_id ??
+    (await resolveStaffDoctorId(staff));
+
   let patientId = body.patient_id ?? null;
 
   try {
@@ -59,7 +66,7 @@ export async function POST(
     // `force` skips the duplicate-name guard: the secretary has already seen
     // the match list and decided this is somebody new.
     if (!patientId) {
-      const created = await createPatient({
+      const created = await createPatient(doctorId, {
         last_name: request.last_name,
         first_name: request.first_name,
         phone: request.phone,
@@ -70,7 +77,7 @@ export async function POST(
       patientId = created.id;
     }
 
-    const appointment = await createAppointment({
+    const appointment = await createAppointment(doctorId, {
       patient_id: patientId,
       appointment_datetime: body.appointment_datetime,
       duration_minutes: body.duration_minutes || 30,

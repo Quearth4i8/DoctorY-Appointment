@@ -48,7 +48,7 @@ export async function GET(req: Request) {
   const to = dateKey(days[days.length - 1]);
 
   try {
-    const busy = await listBusyRanges(from, to);
+    const busy = await listBusyRanges(doctor.id, from, to);
     return NextResponse.json({
       view,
       from,

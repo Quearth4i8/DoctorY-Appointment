@@ -5,7 +5,8 @@ import type { DayHours, Doctor, Tariff } from "@/types";
 
 const FIELDS =
   "id, slug, title, full_name, specialty, bio, photo_url, address, city, " +
-  "phone, email, latitude, longitude, hours, tariffs, is_published";
+  "phone, email, latitude, longitude, hours, tariffs, is_published, " +
+  "remote_api_url, remote_seen_at";
 
 /**
  * Reads doctor profiles with the anon key, so Row Level Security decides what
@@ -30,6 +31,8 @@ function normalise(row: Record<string, unknown>): Doctor {
     hours: Array.isArray(row.hours) ? (row.hours as DayHours[]) : [],
     tariffs: Array.isArray(row.tariffs) ? (row.tariffs as Tariff[]) : [],
     is_published: row.is_published === true,
+    remote_api_url: String(row.remote_api_url ?? ""),
+    remote_seen_at: row.remote_seen_at ? String(row.remote_seen_at) : null,
   };
 }
 

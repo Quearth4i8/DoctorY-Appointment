@@ -6,7 +6,7 @@ export const dynamic = "force-dynamic";
 
 export async function GET(req: Request) {
   const search = new URL(req.url).searchParams.get("search") ?? "";
-  return handleStaff(() => searchPatients(search));
+  return handleStaff((doctorId) => searchPatients(doctorId, search));
 }
 
 export async function POST(req: Request) {
@@ -14,11 +14,11 @@ export async function POST(req: Request) {
     force?: boolean;
   };
 
-  return handleStaff(() => {
+  return handleStaff((doctorId) => {
     if (!body.last_name?.trim()) {
       throw new DoctorApiError(400, "Le nom est obligatoire.");
     }
-    return createPatient({
+    return createPatient(doctorId, {
       last_name: body.last_name.trim(),
       first_name: body.first_name?.trim() ?? "",
       father_name: body.father_name?.trim() ?? "",

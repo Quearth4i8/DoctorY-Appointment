@@ -45,78 +45,92 @@ consultation, document and CNAM form one URL away from anyone who found it.
 The token is generated once and stored in the backend's `app_settings.json`
 under `remote_api_token`.
 
-## 1. On the doctor's PC — nothing to configure
+## Several doctors, one installer
 
-The app does it all. On startup it:
+Each desktop installation generates its own **clé de liaison** and identifies
+itself with it. The same build ships to every doctor: nothing is compiled per
+practice, and no slug or id is configured anywhere.
 
-1. listens on `127.0.0.1:8766` (token-protected),
-2. launches `cloudflared` in quick-tunnel mode — no Cloudflare account, no
-   domain, no router setup,
-3. reads the `https://…trycloudflare.com` address it was given,
-4. publishes that address to Supabase.
+```
+Doctor installs the app          Secretary, once                 Every request
+────────────────────────         ───────────────                 ────────────
+key generated automatically  →   pastes it in Paramètres     →   site resolves
+app opens a quick tunnel         (binds key ↔ her doctor)        that doctor's
+publishes its address                                            address + key
+using that key
+```
 
-The address changes on every restart, which is why nothing hardcodes it.
+## 1. The doctor
 
-**What you must ship with the app:** `cloudflared.exe` next to the backend
-executable (or anywhere on PATH). Download it from
+Installs the app. That is the whole setup.
+
+To hand over his key: **Paramètres → Application du médecin** in the desktop app,
+or read `remote_api_token` from `app_settings.json`. He sends it to his
+secretary once and never again — the address may change on every reboot, the key
+does not.
+
+**What must ship in the installer:** `cloudflared.exe` beside `server.exe` (or
+anywhere on PATH). Download it from
 https://developers.cloudflare.com/cloudflare-one/connections/connect-networks/downloads/
-and place it beside `server.exe` in the installer. Without it the app still
-works locally; only the website loses its connection.
+Without it the app still works locally; only the website loses the connection.
 
-**What the doctor must do once:** open the app's settings and send you the
-*code de liaison* (`remote_api_token` in `app_settings.json`). One copy-paste,
-never repeated.
-
-## 2. Link the practice — one-time, done by you
-
-The app needs to know where to publish, and Supabase needs to know which token
-to trust. In the backend's `app_settings.json` add:
+**What each installation needs in `app_settings.json`** so it knows where to
+publish — the same two values for every doctor, so they can be shipped with the
+build:
 
 ```json
 {
   "supabase_url": "https://hfoibsulsziwqhlcmftw.supabase.co",
-  "supabase_anon_key": "<anon key>",
-  "doctor_slug": "medecin"
+  "supabase_anon_key": "<anon key>"
 }
 ```
 
-Then store the *hash* of the doctor's token in Supabase (never the token):
+## 2. The secretary
 
-```sql
-update public.doctors
-set remote_token_hash = encode(digest('<code de liaison>', 'sha256'), 'hex')
-where slug = 'medecin';
-```
+Paramètres → **Application du médecin** → paste the key → **Lier**.
 
-Registration is refused unless the hash matches, so nobody else can point the
-practice's address at their own server and collect the token the site sends.
+The card then shows *Connectée* with the last time the app announced itself. She
+never sees an address and never touches a config file.
+
+Binding is restricted to the doctor she works for (`staff.doctor_id`), so she
+cannot re-point another practice at a key she controls.
 
 ## 3. On Vercel
-
-Import the GitHub repo and set these (Settings → Environment Variables):
 
 | Variable | Value |
 | --- | --- |
 | `NEXT_PUBLIC_SUPABASE_URL` | `https://hfoibsulsziwqhlcmftw.supabase.co` |
 | `NEXT_PUBLIC_SUPABASE_ANON_KEY` | the anon key |
-| `DOCTOR_API_TOKEN` | the doctor's *code de liaison* |
+| `SERVER_API_SECRET` | any long random string — see below |
 | `NEXT_PUBLIC_TURNSTILE_SITE_KEY` | real key from the Turnstile dashboard |
 | `TURNSTILE_SECRET_KEY` | real secret — **not** `NEXT_PUBLIC_` |
 | `IP_HASH_SALT` | any long random string |
 
-Do **not** set `DOCTOR_API_URL` in production: leaving it unset is what makes
-the site look the address up from Supabase. Setting it pins the site to one
-address and it will break on the next reboot.
+Register the same secret in Supabase once:
 
-Add your Vercel domain to the Turnstile site's hostnames, or every submission is
+```sql
+select public.set_app_secret('server_api_secret', '<same value>');
+```
+
+That is what lets the server read each practice's key through
+`get_doctor_endpoint()`. It is deliberately not a service-role key: if it leaks,
+the damage is limited to endpoint credentials rather than the whole database.
+
+Leave `DOCTOR_API_URL` and `DOCTOR_API_TOKEN` **unset** in production. Setting
+them pins the whole site to one backend, which is exactly what breaks with more
+than one doctor.
+
+Add the Vercel domain to the Turnstile site's hostnames, or every submission is
 refused.
 
 ## 4. Check it
 
-Find the address the app published:
+Find what each practice published:
 
 ```sql
-select slug, remote_api_url, remote_seen_at from public.doctors;
+select slug, remote_api_url, remote_seen_at,
+       remote_token <> '' as paired
+from public.doctors;
 ```
 
 `remote_seen_at` updating after a restart means registration works. Then, from

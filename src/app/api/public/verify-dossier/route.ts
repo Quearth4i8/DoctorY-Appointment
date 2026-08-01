@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 
 import { findPatientByDossier } from "@/lib/doctor-api";
+import { getDoctorBySlug } from "@/lib/doctors";
 import { clientIp, hashIp } from "@/lib/request-intake";
 
 export const dynamic = "force-dynamic";
@@ -44,12 +45,20 @@ export async function POST(req: Request) {
   const body = (await req.json().catch(() => ({}))) as {
     numero_dossier?: string;
     phone?: string;
+    doctor_slug?: string;
   };
 
   const dossier = (body.numero_dossier ?? "").trim();
   const phone = (body.phone ?? "").replace(/\D/g, "");
 
   if (!dossier || phone.length < 6) {
+    return NextResponse.json({ verified: false });
+  }
+
+  // Each practice has its own patients, so a dossier only means something
+  // against the doctor the visitor is actually booking with.
+  const doctor = await getDoctorBySlug(body.doctor_slug ?? "");
+  if (!doctor || !doctor.is_published) {
     return NextResponse.json({ verified: false });
   }
 
@@ -62,7 +71,7 @@ export async function POST(req: Request) {
   }
 
   try {
-    const patient = await findPatientByDossier(dossier, phone);
+    const patient = await findPatientByDossier(doctor.id, dossier, phone);
     return NextResponse.json({ verified: patient !== null });
   } catch {
     // Doctor's machine unreachable — say "not verified" rather than leaking

@@ -5,6 +5,7 @@ import { ExternalLink } from "lucide-react";
 import { AccessDenied } from "@/components/access-denied";
 import { AppShell } from "@/components/app-shell";
 import { DoctorSettingsForm } from "@/components/settings/doctor-settings-form";
+import { PairingCard } from "@/components/settings/pairing-card";
 import { getDoctorForStaff } from "@/lib/doctors";
 import { getStaff } from "@/lib/supabase/server";
 
@@ -47,7 +48,14 @@ export default async function ParametresPage() {
         </div>
 
         {doctor ? (
-          <DoctorSettingsForm doctor={doctor} />
+          <>
+            <PairingCard
+              isLinked={Boolean(doctor.remote_api_url) || doctor.remote_seen_at !== null}
+              apiUrl={doctor.remote_api_url}
+              seenAt={doctor.remote_seen_at}
+            />
+            <DoctorSettingsForm doctor={doctor} />
+          </>
         ) : (
           <div className="rounded-2xl border border-dashed bg-card/50 px-6 py-16 text-center">
             <p className="text-base font-semibold text-foreground">

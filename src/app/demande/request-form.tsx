@@ -125,7 +125,11 @@ export function RequestForm({
         const res = await fetch("/api/public/verify-dossier", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ numero_dossier: dossier, phone: phoneDigits }),
+          body: JSON.stringify({
+            numero_dossier: dossier,
+            phone: phoneDigits,
+            doctor_slug: doctorSlug,
+          }),
         });
         const data = (await res.json().catch(() => ({}))) as { verified?: boolean };
         if (!cancelled) setVerified(data.verified === true);
@@ -141,7 +145,7 @@ export function RequestForm({
       clearTimeout(timer);
       setChecking(false);
     };
-  }, [existing, dossier, phoneDigits]);
+  }, [existing, dossier, phoneDigits, doctorSlug]);
 
   function set<K extends keyof typeof EMPTY>(key: K, value: string) {
     setForm((f) => ({ ...f, [key]: value }));

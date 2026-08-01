@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 
 import { createClient } from "@/lib/supabase/server";
 import { findPatientByDossier } from "@/lib/doctor-api";
+import { getDoctorBySlug } from "@/lib/doctors";
 import { clientIp, hashIp, normalisePhone } from "@/lib/request-intake";
 import { verifyTurnstile } from "@/lib/turnstile";
 
@@ -94,7 +95,10 @@ export async function POST(req: Request) {
 
   if (isExisting && dossier) {
     try {
-      const patient = await findPatientByDossier(dossier, phoneDigits);
+      const doctor = await getDoctorBySlug(body.doctor_slug ?? "");
+      const patient = doctor?.is_published
+        ? await findPatientByDossier(doctor.id, dossier, phoneDigits)
+        : null;
       if (patient) {
         dossierVerified = true;
         last_name = patient.last_name || last_name;

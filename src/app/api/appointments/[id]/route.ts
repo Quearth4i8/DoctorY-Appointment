@@ -26,10 +26,10 @@ export async function PUT(
     notes?: string | null;
   };
 
-  return handleStaff(() => {
+  return handleStaff((doctorId) => {
     const id = parseId(params);
     if (body.appointment_datetime) {
-      return updateAppointment(id, {
+      return updateAppointment(doctorId, id, {
         appointment_datetime: body.appointment_datetime,
         duration_minutes: body.duration_minutes ?? 30,
         status: body.status ?? "a_venir",
@@ -37,7 +37,7 @@ export async function PUT(
       });
     }
     if (body.status) {
-      return updateAppointmentStatus(id, body.status);
+      return updateAppointmentStatus(doctorId, id, body.status);
     }
     throw new DoctorApiError(400, "Aucune modification fournie.");
   });
@@ -48,10 +48,10 @@ export async function PATCH(
   { params }: { params: { id: string } },
 ) {
   const body = (await req.json().catch(() => ({}))) as { status?: string };
-  return handleStaff(() => {
+  return handleStaff((doctorId) => {
     const id = parseId(params);
     if (!body.status) throw new DoctorApiError(400, "Statut manquant.");
-    return updateAppointmentStatus(id, body.status);
+    return updateAppointmentStatus(doctorId, id, body.status);
   });
 }
 
@@ -59,5 +59,5 @@ export async function DELETE(
   _req: Request,
   { params }: { params: { id: string } },
 ) {
-  return handleStaff(() => deleteAppointment(parseId(params)));
+  return handleStaff((doctorId) => deleteAppointment(doctorId, parseId(params)));
 }
