@@ -13,6 +13,7 @@ import { supabaseAnonKey, supabaseUrl } from "./env";
  */
 const PUBLIC_PREFIXES = [
   "/login", // secretary sign-in
+  "/inscription", // secretary account creation (needs the doctor's key)
   "/demande", // public "request an appointment" form
   "/medecins", // public doctor profiles
   "/api/public", // endpoints backing the public pages

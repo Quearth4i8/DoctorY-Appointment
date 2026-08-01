@@ -187,6 +187,16 @@ export function LoginForm() {
           Se connecter
         </button>
 
+        <p className="pt-1 text-center text-sm text-slate-500">
+          Pas encore de compte ?{" "}
+          <Link
+            href="/inscription"
+            className="font-semibold text-teal-600 hover:underline"
+          >
+            Créer un compte secrétaire
+          </Link>
+        </p>
+
         {/* A patient who lands here by mistake needs a way back out. */}
         <Link
           href="/"
