@@ -1,10 +1,10 @@
 "use client";
 
-import { useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { formatDistanceToNow } from "date-fns";
 import { fr } from "date-fns/locale";
-import { Check, Link2, Loader2, PlugZap, Unplug } from "lucide-react";
+import { Eye, EyeOff, Link2, Loader2, PlugZap, Unplug } from "lucide-react";
 import { toast } from "sonner";
 
 import { Button } from "@/components/ui/button";
@@ -13,30 +13,45 @@ import { Label } from "@/components/ui/label";
 import { createClient } from "@/lib/supabase/client";
 import { cn } from "@/lib/utils";
 
+type Hint = {
+  has_key: boolean;
+  last4: string;
+  seen_at: string | null;
+  api_linked: boolean;
+};
+
 /**
  * Links this practice's website to the doctor's desktop app.
  *
  * The doctor's app generates a key and shows it in its settings; pasting it
- * here is the whole pairing. The app then publishes its own address using that
- * key, so nothing has to be configured per installation and the address may
- * change as often as it likes.
+ * here is the whole pairing. Pasting a new one replaces the old.
+ *
+ * The stored key is shown as a fingerprint only — dots plus its last four
+ * characters. The full value is never sent to the browser: it opens the
+ * doctor's API directly, which would let a secretary read the clinical record
+ * the proxy deliberately keeps from her.
  */
-export function PairingCard({
-  isLinked,
-  apiUrl,
-  seenAt,
-}: {
-  isLinked: boolean;
-  apiUrl: string;
-  seenAt: string | null;
-}) {
+export function PairingCard() {
   const router = useRouter();
+  const [hint, setHint] = useState<Hint | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [revealed, setRevealed] = useState(false);
   const [key, setKey] = useState("");
   const [saving, setSaving] = useState(false);
 
-  // The app re-registers on every start, so a recent timestamp means it is up.
-  const seen = seenAt ? new Date(seenAt) : null;
-  const online = Boolean(apiUrl) && seen !== null;
+  const load = useCallback(async () => {
+    const { data } = await createClient().rpc("doctor_key_hint");
+    const row = Array.isArray(data) ? data[0] : data;
+    setHint((row as Hint) ?? null);
+    setLoading(false);
+  }, []);
+
+  useEffect(() => {
+    load();
+  }, [load]);
+
+  const online = Boolean(hint?.api_linked && hint?.seen_at);
+  const seen = hint?.seen_at ? new Date(hint.seen_at) : null;
 
   async function link() {
     const value = key.trim();
@@ -54,7 +69,7 @@ export function PairingCard({
       const raised = `${error.message} ${error.details ?? ""}`;
       toast.error(
         raised.includes("KEY_IN_USE")
-          ? "Cette clé est déjà utilisée par un autre cabinet."
+          ? "Cette clé appartient déjà à un autre cabinet."
           : raised.includes("INVALID_KEY")
             ? "Clé invalide."
             : "Impossible d'enregistrer la clé.",
@@ -63,8 +78,12 @@ export function PairingCard({
     }
 
     setKey("");
+    setRevealed(false);
+    await load();
     toast.success(
-      "Clé enregistrée. L'application du médecin se connectera dans un instant.",
+      hint?.has_key
+        ? "Clé remplacée. L'ancienne ne fonctionne plus."
+        : "Clé enregistrée. L'application du médecin va se connecter.",
     );
     router.refresh();
   }
@@ -91,25 +110,59 @@ export function PairingCard({
             Application du médecin
           </h2>
           <p className="mt-0.5 text-sm text-muted-foreground">
-            {online
-              ? `Connectée — vue il y a ${formatDistanceToNow(seen!, { locale: fr })}`
-              : isLinked
-                ? "Clé enregistrée, en attente de connexion."
-                : "Non liée : l'agenda et les patients ne sont pas accessibles."}
+            {loading
+              ? "Vérification…"
+              : online
+                ? `Connectée — vue il y a ${formatDistanceToNow(seen!, { locale: fr })}`
+                : hint?.has_key
+                  ? "Clé enregistrée, en attente de connexion."
+                  : "Non liée : l'agenda et les patients ne sont pas accessibles."}
           </p>
         </div>
       </div>
 
+      {/* Current key, as a fingerprint. */}
+      {hint?.has_key ? (
+        <div className="mb-4">
+          <Label className="text-sm font-medium">Clé enregistrée</Label>
+          <div className="mt-1.5 flex items-center gap-2">
+            <code className="flex-1 rounded-lg border bg-secondary/50 px-3.5 py-2.5 font-mono text-sm tracking-widest text-foreground">
+              {revealed ? `${"•".repeat(20)}${hint.last4}` : "•".repeat(24)}
+            </code>
+            <Button
+              type="button"
+              variant="outline"
+              size="icon"
+              onClick={() => setRevealed((v) => !v)}
+              title={revealed ? "Masquer" : "Afficher les 4 derniers caractères"}
+              aria-label={revealed ? "Masquer" : "Afficher"}
+            >
+              {revealed ? (
+                <EyeOff className="h-4 w-4" />
+              ) : (
+                <Eye className="h-4 w-4" />
+              )}
+            </Button>
+          </div>
+          <p className="mt-1.5 text-xs text-muted-foreground">
+            {revealed
+              ? "Seuls les 4 derniers caractères sont affichés — de quoi vérifier la clé auprès du médecin, sans pouvoir la réutiliser ailleurs."
+              : "Une clé est enregistrée pour ce cabinet."}
+          </p>
+        </div>
+      ) : null}
+
       <div className="flex flex-col gap-3 sm:flex-row sm:items-end">
         <div className="flex-1 space-y-1.5">
           <Label htmlFor="pairing-key" className="text-sm font-medium">
-            Clé de liaison
+            {hint?.has_key ? "Remplacer par une nouvelle clé" : "Clé de liaison"}
           </Label>
           <Input
             id="pairing-key"
+            type="password"
             value={key}
             onChange={(e) => setKey(e.target.value)}
-            placeholder={isLinked ? "Saisir une nouvelle clé…" : "Collez la clé ici"}
+            placeholder="Collez la clé du médecin"
             autoComplete="off"
             spellCheck={false}
             className="font-mono text-sm"
@@ -121,23 +174,15 @@ export function PairingCard({
           ) : (
             <Link2 className="h-4 w-4" />
           )}
-          {isLinked ? "Remplacer" : "Lier"}
+          {hint?.has_key ? "Remplacer" : "Lier"}
         </Button>
       </div>
 
       <p className="mt-3 text-xs leading-relaxed text-muted-foreground">
-        Le médecin trouve cette clé dans les paramètres de son application. Elle
-        ne sert qu&apos;à relier ce site à son ordinateur — elle ne donne accès à
-        rien depuis un navigateur.
+        {hint?.has_key
+          ? "Enregistrer une nouvelle clé remplace l'ancienne : celle-ci cesse aussitôt de fonctionner."
+          : "Le médecin trouve cette clé dans son application, section « Site de rendez-vous »."}
       </p>
-
-      {isLinked && !online ? (
-        <p className="mt-3 flex items-start gap-2 rounded-xl bg-secondary px-3.5 py-2.5 text-xs leading-relaxed text-muted-foreground">
-          <Check className="mt-0.5 h-3.5 w-3.5 shrink-0" />
-          La clé est enregistrée. Si rien ne se connecte, vérifiez que
-          l&apos;application du médecin est ouverte sur son ordinateur.
-        </p>
-      ) : null}
     </section>
   );
 }

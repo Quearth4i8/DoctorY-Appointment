@@ -49,11 +49,7 @@ export default async function ParametresPage() {
 
         {doctor ? (
           <>
-            <PairingCard
-              isLinked={Boolean(doctor.remote_api_url) || doctor.remote_seen_at !== null}
-              apiUrl={doctor.remote_api_url}
-              seenAt={doctor.remote_seen_at}
-            />
+            <PairingCard />
             <DoctorSettingsForm doctor={doctor} />
           </>
         ) : (
