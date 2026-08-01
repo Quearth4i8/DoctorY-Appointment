@@ -74,16 +74,12 @@ anywhere on PATH). Download it from
 https://developers.cloudflare.com/cloudflare-one/connections/connect-networks/downloads/
 Without it the app still works locally; only the website loses the connection.
 
-**What each installation needs in `app_settings.json`** so it knows where to
-publish — the same two values for every doctor, so they can be shipped with the
-build:
-
-```json
-{
-  "supabase_url": "https://hfoibsulsziwqhlcmftw.supabase.co",
-  "supabase_anon_key": "<anon key>"
-}
-```
+**Nothing to configure per machine.** The Supabase URL and anon key are
+compiled into the app (`api/utils/tunnel.py`). The anon key is meant to be
+public — it already ships inside the website's JavaScript — and grants nothing
+on its own, since every table is behind Row Level Security. Override them per
+machine via `app_settings.json` or the environment only if you need to point an
+installation at a different project.
 
 ## 2. The secretary
 
