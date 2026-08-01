@@ -16,6 +16,9 @@
 # next.js
 /.next/
 /out/
+# Any alternate build output (e.g. a verification build run with
+# NEXT_DIST_DIR) — build artifacts must never be committed.
+/.next-*/
 
 # production
 /build

@@ -1,0 +1,14 @@
+<svg width="1200" height="675" viewBox="0 0 1200 675" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1200" y2="675" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#F4F4F5"/>
+      <stop offset="1" stop-color="#E4E4E7"/>
+    </linearGradient>
+  </defs>
+  <rect width="1200" height="675" rx="48" fill="url(#bg)"/>
+  <circle cx="600" cy="278" r="110" fill="#D4D4D8"/>
+  <rect x="360" y="415" width="480" height="160" rx="80" fill="#D4D4D8"/>
+  <rect x="520" y="230" width="160" height="96" rx="16" fill="#FAFAFA"/>
+  <path d="M600 244C607 244 612 249 612 256V266H622C629 266 634 271 634 278C634 285 629 290 622 290H612V300C612 307 607 312 600 312C593 312 588 307 588 300V290H578C571 290 566 285 566 278C566 271 571 266 578 266H588V256C588 249 593 244 600 244Z" fill="#A1A1AA"/>
+  <text x="600" y="610" text-anchor="middle" font-family="Inter, system-ui, -apple-system, Segoe UI, Roboto, Arial" font-size="28" fill="#71717A">Doctor</text>
+</svg>
