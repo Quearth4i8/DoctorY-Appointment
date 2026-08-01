@@ -5,8 +5,8 @@ import { resolveStaffDoctorId } from "@/lib/api-response";
 import {
   createAppointment,
   createPatient,
-  DoctorApiError,
-} from "@/lib/doctor-api";
+  FrontDeskError,
+} from "@/lib/front-desk";
 import type { AcceptRequestInput, AppointmentRequest } from "@/types";
 
 export const dynamic = "force-dynamic";
@@ -14,10 +14,13 @@ export const dynamic = "force-dynamic";
 /**
  * Approve a request: this is the moment a visitor becomes a patient.
  *
- * Sequence matters. The patient and the appointment are written to doctor.db
- * FIRST, and only then is the Supabase row marked accepted — so a failure
- * halfway leaves the request pending and retryable, rather than marked done
- * with nothing in the doctor's database to show for it.
+ * Sequence matters. The patient and the appointment are created FIRST, and only
+ * then is the request marked accepted — so a failure halfway leaves it pending
+ * and retryable, rather than marked done with nothing to show for it.
+ *
+ * The doctor's PC plays no part in this. A new patient gets a real file number
+ * the next time his app syncs; until then she shows as "en attente", which is
+ * honest and does not stop the appointment being booked.
  */
 export async function POST(
   req: Request,
@@ -62,9 +65,9 @@ export async function POST(
   let patientId = body.patient_id ?? null;
 
   try {
-    // No existing patient chosen → create one from what the visitor submitted.
-    // `force` skips the duplicate-name guard: the secretary has already seen
-    // the match list and decided this is somebody new.
+    // No existing patient chosen → register one from what the visitor
+    // submitted. The secretary has already seen the match list and decided
+    // this is somebody new.
     if (!patientId) {
       const created = await createPatient(doctorId, {
         last_name: request.last_name,
@@ -72,7 +75,6 @@ export async function POST(
         phone: request.phone,
         gender: request.gender,
         age: request.age,
-        force: true,
       });
       patientId = created.id;
     }
@@ -108,7 +110,7 @@ export async function POST(
       return NextResponse.json(
         {
           error:
-            "Le rendez-vous a été créé dans l'application du médecin, mais la demande n'a pas pu être marquée comme acceptée. Ne la re-validez pas : signalez-le.",
+            "Le rendez-vous a bien été créé, mais la demande n'a pas pu être marquée comme acceptée. Ne la re-validez pas : signalez-le.",
           patient_id: patientId,
         },
         { status: 500 },
@@ -121,8 +123,7 @@ export async function POST(
       appointment_id: appointment.id,
     });
   } catch (err) {
-    if (err instanceof DoctorApiError) {
-      // Includes BACKEND_UNREACHABLE — the doctor's PC is off or out of reach.
+    if (err instanceof FrontDeskError) {
       return NextResponse.json(
         { error: err.message, code: err.code, patient_id: patientId },
         { status: err.status },

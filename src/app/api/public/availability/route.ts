@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 
 import { getDoctorBySlug } from "@/lib/doctors";
-import { DoctorApiError, listBusyRanges } from "@/lib/doctor-api";
+import { listBusyRanges } from "@/lib/front-desk";
 import {
   buildAvailability,
   dateKey,
@@ -16,13 +16,13 @@ const VIEWS: CalendarView[] = ["day", "week", "month"];
 /**
  * Public availability for one doctor, over a day, a week or a month.
  *
- * Returns free/taken slots only. The upstream projection (listBusyRanges) has
- * already thrown away everything except two timestamps per appointment, so
- * there is no patient information in this response to leak.
+ * Returns free/taken slots only. `public_busy_ranges` in the database throws
+ * away everything except two timestamps per appointment, so there is no patient
+ * information in this response to leak.
  *
- * Degrades honestly: if the doctor's machine is unreachable the response says
- * so, and the page falls back to "ask for a day" rather than inventing slots
- * that may already be booked.
+ * The agenda lives in Supabase, so this works whether or not the doctor's PC is
+ * on — which is the point: a visitor should never be told to come back later
+ * because a machine in the cabinet is asleep.
  */
 export async function GET(req: Request) {
   const params = new URL(req.url).searchParams;
@@ -55,21 +55,7 @@ export async function GET(req: Request) {
       to,
       days: buildAvailability({ days, hours: doctor.hours, busy }),
     });
-  } catch (err) {
-    if (err instanceof DoctorApiError && err.code === "BACKEND_UNREACHABLE") {
-      return NextResponse.json(
-        {
-          view,
-          from,
-          to,
-          days: [],
-          unavailable: true,
-          error:
-            "Les créneaux ne sont pas consultables pour le moment. Vous pouvez tout de même demander un jour.",
-        },
-        { status: 200 },
-      );
-    }
+  } catch {
     return NextResponse.json(
       { error: "Impossible de charger les créneaux." },
       { status: 500 },

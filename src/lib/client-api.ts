@@ -9,7 +9,7 @@ import type {
   SafePatient,
 } from "@/types";
 
-/** Error carrying the friendly message + machine code from a proxy response. */
+/** Error carrying the friendly message + machine code from an API response. */
 export class ApiError extends Error {
   status: number;
   code?: string;
@@ -31,6 +31,7 @@ async function request<T>(url: string, init?: RequestInit): Promise<T> {
   });
   const text = await res.text();
   const data = text ? JSON.parse(text) : null;
+
   if (!res.ok) {
     const d = data as { error?: string; code?: string; detail?: unknown } | null;
     throw new ApiError(
@@ -40,6 +41,7 @@ async function request<T>(url: string, init?: RequestInit): Promise<T> {
       d?.detail,
     );
   }
+
   return data as T;
 }
 
@@ -57,8 +59,8 @@ export function searchPatients(search: string): Promise<SafePatient[]> {
 
 export function createPatient(
   input: NewPatientInput & { force?: boolean },
-): Promise<{ id: number }> {
-  return request<{ id: number }>("/api/patients", {
+): Promise<{ id: string }> {
+  return request<{ id: string }>("/api/patients", {
     method: "POST",
     body: JSON.stringify(input),
   });
@@ -66,7 +68,7 @@ export function createPatient(
 
 /** Administrative edit. There is no deletePatient — that stays the doctor's. */
 export function updatePatient(
-  id: number,
+  id: string,
   input: PatientAdminInput,
 ): Promise<unknown> {
   return request(`/api/patients/${id}`, {
@@ -77,15 +79,15 @@ export function updatePatient(
 
 export function createAppointment(
   input: NewAppointmentInput,
-): Promise<{ id: number }> {
-  return request<{ id: number }>("/api/appointments", {
+): Promise<{ id: string }> {
+  return request<{ id: string }>("/api/appointments", {
     method: "POST",
     body: JSON.stringify(input),
   });
 }
 
 export function updateAppointment(
-  id: number,
+  id: string,
   input: {
     appointment_datetime: string;
     duration_minutes: number;
@@ -100,7 +102,7 @@ export function updateAppointment(
 }
 
 export function setAppointmentStatus(
-  id: number,
+  id: string,
   status: string,
 ): Promise<unknown> {
   return request(`/api/appointments/${id}`, {
@@ -109,7 +111,7 @@ export function setAppointmentStatus(
   });
 }
 
-export function deleteAppointment(id: number): Promise<unknown> {
+export function deleteAppointment(id: string): Promise<unknown> {
   return request(`/api/appointments/${id}`, { method: "DELETE" });
 }
 
@@ -128,11 +130,11 @@ export function refuseRequest(id: string, staffNotes = ""): Promise<unknown> {
   });
 }
 
-/** Approving creates the patient (if new) and the appointment in doctor.db. */
+/** Approving registers the patient (if new) and books the appointment. */
 export function acceptRequest(
   id: string,
   input: AcceptRequestInput,
-): Promise<{ patient_id: number; appointment_id: number }> {
+): Promise<{ patient_id: string; appointment_id: string }> {
   return request(`/api/requests/${id}/accept`, {
     method: "POST",
     body: JSON.stringify(input),

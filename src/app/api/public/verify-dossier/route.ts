@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 
-import { findPatientByDossier } from "@/lib/doctor-api";
+import { findPatientByDossier } from "@/lib/front-desk";
 import { getDoctorBySlug } from "@/lib/doctors";
 import { clientIp, hashIp } from "@/lib/request-intake";
 
@@ -74,8 +74,8 @@ export async function POST(req: Request) {
     const patient = await findPatientByDossier(doctor.id, dossier, phone);
     return NextResponse.json({ verified: patient !== null });
   } catch {
-    // Doctor's machine unreachable — say "not verified" rather than leaking
-    // that the lookup itself failed; the visitor can still fill the form.
+    // Say "not verified" rather than leaking that the lookup itself failed;
+    // the visitor can still fill the form by hand.
     return NextResponse.json({ verified: false });
   }
 }

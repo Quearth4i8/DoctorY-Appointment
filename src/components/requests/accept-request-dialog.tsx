@@ -128,7 +128,7 @@ export function AcceptRequestDialog({
       const hh = String(Math.floor(minute / 60)).padStart(2, "0");
       const mm = String(minute % 60).padStart(2, "0");
       await acceptRequest(request!.id, {
-        patient_id: choice === NEW_PATIENT ? null : Number(choice),
+        patient_id: choice === NEW_PATIENT ? null : choice,
         appointment_datetime: `${date} ${hh}:${mm}:00`,
         duration_minutes: duration,
       });

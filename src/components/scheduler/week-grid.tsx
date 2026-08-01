@@ -194,8 +194,8 @@ export function WeekGrid({
   onCreateSlot: (day: Date, minute: number) => void;
   onOpenAppointment: (a: Appointment) => void;
   onReschedule: (appt: Appointment, day: Date, minute: number) => void;
-  activeId: number | null;
-  setActiveId: (id: number | null) => void;
+  activeId: string | null;
+  setActiveId: (id: string | null) => void;
 }) {
   const sensors = useSensors(
     useSensor(MouseSensor, { activationConstraint: { distance: 6 } }),
@@ -219,14 +219,14 @@ export function WeekGrid({
     : null;
 
   function handleDragStart(e: DragStartEvent) {
-    setActiveId(Number(e.active.id));
+    setActiveId(String(e.active.id));
   }
 
   function handleDragEnd(e: DragEndEvent) {
     setActiveId(null);
     const { active, over } = e;
     if (!over) return;
-    const appt = appointments.find((a) => a.id === Number(active.id));
+    const appt = appointments.find((a) => a.id === String(active.id));
     if (!appt) return;
     const [dateKey, minStr] = String(over.id).split("|");
     const minute = Number(minStr);

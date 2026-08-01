@@ -145,20 +145,63 @@ should see the agenda.
 
 ## What happens when the doctor's PC is off
 
-The tunnel goes down and the site degrades rather than breaking:
+Nothing. That is the point of the design, and it is worth understanding why.
 
-| | |
-| --- | --- |
-| Patient sends a request | still works — it only touches Supabase |
-| Public availability calendar | shows "créneaux non consultables", invites them to ask for a day |
-| Secretary's agenda / patients | shows "cabinet injoignable" with a retry |
-| Accepting a request | refused, request stays pending and retryable |
+The website used to proxy every request through to the doctor's machine, so the
+secretary could not do her job while he was asleep. Patients and appointments
+now live in Supabase, which she can always reach, and his app reconciles with it
+whenever it connects — in either direction, after any length of silence.
 
-Nothing is lost or half-written: accepting writes to `doctor.db` first and only
-then marks the request accepted.
+What makes that safe is that **every row has exactly one writer**:
 
-If the site needs to show slots while the PC is off, that requires publishing
-free/busy to Supabase on a schedule — a different design, not just config.
+| | Written by | Reconciled how |
+| --- | --- | --- |
+| Appointments | the secretary, always | his app copies them down; it never creates one |
+| Clinical record | the doctor, always | never leaves `doctor.db` |
+| Patient admin fields | either side | her edit sets `pending_edit`; his app applies it and clears the flag |
+| `numero_dossier` | the doctor's app, always | she may suggest one; his app keeps it if free, reassigns it if not |
+
+With one writer per row there is nothing to merge and no conflict to resolve.
+
+### File numbers
+
+A patient she registers has **no file number until his app next syncs** — only
+`doctor.db` knows which numbers have ever been issued, and inventing one here
+would collide with a real dossier. The website shows "N° en attente" for those,
+which is honest and does not stop her booking them an appointment.
+
+If she does type a number, his app keeps it when it is free and issues the next
+free one when it is not, then sends the final value back.
+
+### Double-booking
+
+The 30-minute rule is a Postgres exclusion constraint
+(`appointments_min_gap`), not application code. Two ranges `[s, s+30)` and
+`[t, t+30)` overlap exactly when `|s - t| < 30 min`, which is the same test
+`AppointmentModel._ensure_constraints` does in SQLite — so the two agree, and a
+booking accepted online can never be rejected on the doctor's machine. Being in
+the schema means it holds even with two tabs open or two people booking at once.
+
+### The doctor's agenda is read-only
+
+His Appointments page shows the day and does not change it. If he wants an
+appointment he asks his secretary. This is not a limitation to work around: two
+writers on one agenda, out of touch with each other, is precisely how a slot
+gets sold twice.
+
+### The first sync
+
+Appointments that already existed in `doctor.db` are lifted up once
+(`desk_seed_appointments`), after which the website owns them. Rows too close
+together to satisfy the 30-minute rule are skipped and counted in the log rather
+than aborting the batch — an old database can already contain them.
+
+### Is the tunnel still needed?
+
+For the day-to-day, no: the website no longer calls the doctor's PC at all. The
+tunnel and the two-port scheme remain in place and still work, and the pairing
+key is still what authenticates his app to Supabase — but nothing on the
+critical path depends on a quick tunnel staying up any more.
 
 ## Limits of a quick tunnel
 

@@ -16,7 +16,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { cn } from "@/lib/utils";
+import { cn, dossierLabel } from "@/lib/utils";
 import { ApiError, createPatient, searchPatients } from "@/lib/client-api";
 import { avatarColor, initials } from "@/lib/avatar";
 import type { SafePatient } from "@/types";
@@ -143,7 +143,7 @@ export function PatientPicker({
           <p className="truncate text-sm text-muted-foreground tnum">
             {[
               value.phone,
-              value.numero_dossier ? `N° ${value.numero_dossier}` : "",
+              dossierLabel(value),
               value.age != null ? `${value.age} ans` : "",
             ]
               .filter(Boolean)
@@ -279,7 +279,7 @@ export function PatientPicker({
                       <span className="block truncate text-xs text-muted-foreground tnum">
                         {[
                           p.phone,
-                          p.numero_dossier ? `N° ${p.numero_dossier}` : "",
+                          dossierLabel(p),
                           p.age != null ? `${p.age} ans` : "",
                         ]
                           .filter(Boolean)
@@ -363,6 +363,8 @@ function NewPatientForm({
       });
       onCreated({
         id,
+        // The doctor's app issues the file number on its next sync.
+        registered: false,
         first_name: firstName.trim(),
         last_name: lastName.trim(),
         father_name: "",

@@ -23,7 +23,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { ApiError, searchPatients } from "@/lib/client-api";
 import { useDebounced } from "@/components/scheduler/patient-picker";
 import { avatarColor, initials } from "@/lib/avatar";
-import { cn } from "@/lib/utils";
+import { cn, dossierLabel } from "@/lib/utils";
 import type { SafePatient } from "@/types";
 import { PatientFormDialog } from "./patient-form-dialog";
 
@@ -159,7 +159,7 @@ export function PatientsManager() {
             const meta = [
               p.gender === "M" ? "Homme" : p.gender === "F" ? "Femme" : "",
               p.age != null ? `${p.age} ans` : "",
-              p.numero_dossier ? `N° ${p.numero_dossier}` : "",
+              dossierLabel(p),
             ].filter(Boolean);
 
             return (

@@ -1,18 +1,11 @@
 import { handleStaff } from "@/lib/api-response";
 import {
   deleteAppointment,
-  DoctorApiError,
+  FrontDeskError,
   updateAppointment,
-  updateAppointmentStatus,
-} from "@/lib/doctor-api";
+} from "@/lib/front-desk";
 
 export const dynamic = "force-dynamic";
-
-function parseId(params: { id: string }): number {
-  const id = Number(params.id);
-  if (!Number.isFinite(id)) throw new DoctorApiError(400, "Identifiant invalide.");
-  return id;
-}
 
 // Full update (reschedule / edit) when datetime is present; otherwise status-only.
 export async function PUT(
@@ -27,19 +20,10 @@ export async function PUT(
   };
 
   return handleStaff((doctorId) => {
-    const id = parseId(params);
-    if (body.appointment_datetime) {
-      return updateAppointment(doctorId, id, {
-        appointment_datetime: body.appointment_datetime,
-        duration_minutes: body.duration_minutes ?? 30,
-        status: body.status ?? "a_venir",
-        notes: body.notes ?? null,
-      });
+    if (!body.appointment_datetime && !body.status) {
+      throw new FrontDeskError(400, "Aucune modification fournie.");
     }
-    if (body.status) {
-      return updateAppointmentStatus(doctorId, id, body.status);
-    }
-    throw new DoctorApiError(400, "Aucune modification fournie.");
+    return updateAppointment(doctorId, params.id, body);
   });
 }
 
@@ -49,9 +33,8 @@ export async function PATCH(
 ) {
   const body = (await req.json().catch(() => ({}))) as { status?: string };
   return handleStaff((doctorId) => {
-    const id = parseId(params);
-    if (!body.status) throw new DoctorApiError(400, "Statut manquant.");
-    return updateAppointmentStatus(doctorId, id, body.status);
+    if (!body.status) throw new FrontDeskError(400, "Statut manquant.");
+    return updateAppointment(doctorId, params.id, { status: body.status });
   });
 }
 
@@ -59,5 +42,5 @@ export async function DELETE(
   _req: Request,
   { params }: { params: { id: string } },
 ) {
-  return handleStaff((doctorId) => deleteAppointment(doctorId, parseId(params)));
+  return handleStaff((doctorId) => deleteAppointment(doctorId, params.id));
 }

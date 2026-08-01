@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 
-import { DoctorApiError } from "@/lib/doctor-api";
+import { FrontDeskError } from "@/lib/front-desk";
 import { createClient, getStaff, type Staff } from "@/lib/supabase/server";
 
 /**
@@ -8,7 +8,7 @@ import { createClient, getStaff, type Staff } from "@/lib/supabase/server";
  *
  * Unbound staff (doctor_id null) is the single-practice case: fall back to the
  * only doctor there is. With several practices every staff row must be bound,
- * or we would have no way to know whose machine to call.
+ * or we would have no way to know whose patients she is looking at.
  */
 export async function resolveStaffDoctorId(staff: Staff): Promise<string> {
   if (staff.doctor_id) return staff.doctor_id;
@@ -22,7 +22,7 @@ export async function resolveStaffDoctorId(staff: Staff): Promise<string> {
 
   const id = (data as { id?: string } | null)?.id;
   if (!id) {
-    throw new DoctorApiError(
+    throw new FrontDeskError(
       503,
       "Aucun cabinet n'est associé à ce compte.",
       "NO_DOCTOR",
@@ -37,7 +37,7 @@ export async function resolveStaffDoctorId(staff: Staff): Promise<string> {
  *
  * The middleware only proves *someone* is signed in. Anyone with a Supabase
  * account in this project would clear that bar, so every route that reaches a
- * doctor's database checks membership here as well.
+ * practice's data checks membership here as well.
  */
 export async function handleStaff<T>(
   fn: (doctorId: string, staff: Staff) => Promise<T>,
@@ -49,24 +49,41 @@ export async function handleStaff<T>(
       { status: 403 },
     );
   }
-  return handle(async () => fn(await resolveStaffDoctorId(staff), staff));
+
+  const doctorId = await resolveStaffDoctorId(staff).catch(() => null);
+  if (!doctorId) {
+    return NextResponse.json(
+      { error: "Aucun cabinet n'est associé à ce compte.", code: "NO_DOCTOR" },
+      { status: 503 },
+    );
+  }
+
+  try {
+    return NextResponse.json((await fn(doctorId, staff)) ?? { ok: true });
+  } catch (err) {
+    return errorResponse(err);
+  }
 }
 
-/** Runs a proxy handler and maps DoctorApiError into a clean JSON response. */
+function errorResponse(err: unknown): NextResponse {
+  if (err instanceof FrontDeskError) {
+    return NextResponse.json(
+      { error: err.message, code: err.code, detail: err.detail },
+      { status: err.status },
+    );
+  }
+  return NextResponse.json(
+    { error: "Une erreur inattendue est survenue." },
+    { status: 500 },
+  );
+}
+
+/** Runs a handler and maps FrontDeskError into a clean JSON response. */
 export async function handle<T>(fn: () => Promise<T>): Promise<NextResponse> {
   try {
     const data = await fn();
     return NextResponse.json(data ?? { ok: true });
   } catch (err) {
-    if (err instanceof DoctorApiError) {
-      return NextResponse.json(
-        { error: err.message, code: err.code, detail: err.detail },
-        { status: err.status },
-      );
-    }
-    return NextResponse.json(
-      { error: "Une erreur inattendue est survenue." },
-      { status: 500 },
-    );
+    return errorResponse(err);
   }
 }

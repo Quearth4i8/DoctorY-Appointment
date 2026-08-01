@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 
 import { createClient } from "@/lib/supabase/server";
-import { findPatientByDossier } from "@/lib/doctor-api";
+import { findPatientByDossier } from "@/lib/front-desk";
 import { getDoctorBySlug } from "@/lib/doctors";
 import { clientIp, hashIp, normalisePhone } from "@/lib/request-intake";
 import { verifyTurnstile } from "@/lib/turnstile";
@@ -109,8 +109,8 @@ export async function POST(req: Request) {
         ageNum = patient.age ?? ageNum;
       }
     } catch {
-      // Doctor's machine unreachable: fall through and use whatever the
-      // visitor typed. The secretary resolves it on review.
+      // Lookup failed: fall through and use whatever the visitor typed. The
+      // secretary resolves it on review.
     }
   }
 

@@ -1,12 +1,13 @@
 // Status values stored by the doctor's desktop app (French).
 export type AppointmentStatus = "a_venir" | "approuve" | "passe" | "annule";
 
-// The only patient fields the secretary's app is ever allowed to see:
-// identity, contact and administrative data. Everything the doctor records —
-// notes, blood_group, habits, external_treatments, referred_by — is dropped at
-// the proxy and never reaches this app (see src/lib/doctor-api.ts).
+// The only patient fields this app ever holds: identity, contact and
+// administrative data. Everything the doctor records — notes, blood_group,
+// habits, external_treatments, referred_by — has no column in Supabase at all
+// and never leaves his machine (see src/lib/front-desk.ts).
 export type SafePatient = {
-  id: number;
+  /** Supabase row id. The doctor's own numeric id stays on his machine. */
+  id: string;
   first_name: string;
   last_name: string;
   father_name: string;
@@ -20,8 +21,11 @@ export type SafePatient = {
   job: string;
   date_of_birth: string;
   insurance_type: string;
+  /** Empty until the doctor's app has issued one. */
   numero_dossier: string;
   created_at: string;
+  /** False while the doctor's app has not taken this patient in yet. */
+  registered: boolean;
 };
 
 /** The administrative fields the secretary is allowed to write. */
@@ -41,8 +45,8 @@ export type PatientAdminInput = {
 };
 
 export type Appointment = {
-  id: number;
-  patient_id: number;
+  id: string;
+  patient_id: string;
   patient_name: string;
   appointment_datetime: string; // "YYYY-MM-DD HH:MM:SS"
   duration_minutes: number;
@@ -53,6 +57,15 @@ export type Appointment = {
 export type NewPatientInput = PatientAdminInput & {
   first_name?: string;
 };
+
+/**
+ * A block of time the doctor is not free. Times only — deliberately.
+ *
+ * This is what the public calendar is built from, so it must never grow an id,
+ * a patient or a reason: publishing those would tell any visitor who is seeing
+ * the doctor and when.
+ */
+export type BusyRange = { start: string; end: string };
 
 // ─── Public doctor profiles (Supabase) ───────────────────────────────────────
 
@@ -139,14 +152,14 @@ export type AppointmentRequest = {
 /** What the secretary sends when approving a request. */
 export type AcceptRequestInput = {
   /** Link to this existing patient, or omit to create a new one. */
-  patient_id?: number | null;
+  patient_id?: string | null;
   appointment_datetime: string; // "YYYY-MM-DD HH:MM:SS"
   duration_minutes: number;
   staff_notes?: string;
 };
 
 export type NewAppointmentInput = {
-  patient_id: number;
+  patient_id: string;
   appointment_datetime: string; // "YYYY-MM-DD HH:MM:SS"
   duration_minutes: number;
   notes?: string | null;

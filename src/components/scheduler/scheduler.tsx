@@ -31,7 +31,7 @@ import { AppointmentDetailsDialog } from "./appointment-details-dialog";
 export function Scheduler() {
   const qc = useQueryClient();
   const [anchor, setAnchor] = useState(() => new Date());
-  const [activeId, setActiveId] = useState<number | null>(null);
+  const [activeId, setActiveId] = useState<string | null>(null);
 
   const [newOpen, setNewOpen] = useState(false);
   const [newTarget, setNewTarget] = useState<SlotTarget | null>(null);
