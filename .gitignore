@@ -35,6 +35,9 @@ yarn-error.log*
 
 # env files (can opt-in for committing if needed)
 .env*
+# Opted in: build-time flags only, never a secret. Read the file before adding
+# anything to it — whatever is in here is public and permanent in git history.
+!.env.production
 
 # vercel
 .vercel
