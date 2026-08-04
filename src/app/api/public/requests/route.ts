@@ -127,6 +127,15 @@ export async function POST(req: Request) {
   const ip = clientIp(req);
   const turnstile = await verifyTurnstile(body.turnstile_token, ip);
 
+  if (turnstile === "disabled") {
+    // Loud on every submission, and meant to be: this is the one state where
+    // the form is open to scripts, and it should be uncomfortable to leave on.
+    // The database caps (3/IP, 2/phone per 24h) are all that remains.
+    console.warn(
+      "[public/requests] accepted with NO bot verification — NEXT_PUBLIC_TURNSTILE_ENABLED=false.",
+    );
+  }
+
   if (turnstile === "not_configured") {
     // Our fault, not the visitor's — do not accuse them of being a robot.
     console.error(
@@ -135,6 +144,7 @@ export async function POST(req: Request) {
     return bad(
       "Le formulaire est momentanément indisponible. Réessayez dans quelques minutes.",
       503,
+      "TURNSTILE_UNAVAILABLE",
     );
   }
   if (turnstile === "failed") {
@@ -188,6 +198,8 @@ export async function POST(req: Request) {
 const TOO_MANY =
   "Vous avez déjà envoyé plusieurs demandes. Le secrétariat vous rappellera — merci de patienter.";
 
-function bad(error: string, status = 400) {
-  return NextResponse.json({ error }, { status });
+// `code` is for whoever is debugging a deployment: the visitor-facing message
+// stays vague, the network tab says exactly which piece is missing.
+function bad(error: string, status = 400, code?: string) {
+  return NextResponse.json(code ? { error, code } : { error }, { status });
 }

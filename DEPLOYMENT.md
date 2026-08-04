@@ -119,6 +119,21 @@ than one doctor.
 Add the Vercel domain to the Turnstile site's hostnames, or every submission is
 refused.
 
+### Going up before Turnstile exists
+
+Setting `NEXT_PUBLIC_TURNSTILE_ENABLED=false` skips the bot check entirely, and
+the two Turnstile keys are then not needed at all. This is for the window where
+the site is deployed so the doctor can try it and nobody else has the address.
+
+What is left is the database's own caps — 3 submissions per IP and 2 per phone
+per rolling 24h, enforced inside `submit_appointment_request()`. That stops an
+accident, not a script: IP caps cost a proxy to get around, and the price of
+losing is the secretary's inbox buried under junk she has to read to dismiss.
+
+Every submission logs `accepted with NO bot verification` while it is set, so
+the state is visible in the Vercel logs rather than forgotten. Remove the
+variable and add the keys before the address is given to a patient.
+
 ## 4. Check it
 
 Find what each practice published:

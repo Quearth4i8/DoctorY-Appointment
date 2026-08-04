@@ -47,6 +47,14 @@ declare global {
 /** Radix Select has no concept of an empty value, so "unset" needs a token. */
 const NONE = "__none__";
 
+/**
+ * Shown when the bot gate is not configured. Same wording the server uses for
+ * a missing `TURNSTILE_SECRET_KEY`, so the visitor sees one story whichever
+ * half of the pair is absent — it is a deployment fault, never their fault.
+ */
+const UNAVAILABLE =
+  "Le formulaire est momentanément indisponible. Réessayez dans quelques minutes.";
+
 const EMPTY = {
   last_name: "",
   first_name: "",
@@ -88,9 +96,17 @@ export function RequestForm({
   const widgetId = useRef<string | null>(null);
   const [scriptReady, setScriptReady] = useState(false);
 
+  // Inlined at build time, so flipping this in the host's settings needs a
+  // redeploy — same as every other env var there.
+  const gateOn = process.env.NEXT_PUBLIC_TURNSTILE_ENABLED !== "false";
   const siteKey = process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY ?? "";
 
+  // The gate is on but has no key: the server will refuse every submission, so
+  // there is no point letting anyone fill the form in.
+  const blocked = gateOn && !siteKey;
+
   useEffect(() => {
+    if (!gateOn) return;
     if (!scriptReady || !widgetRef.current || widgetId.current || !siteKey) return;
     widgetId.current =
       window.turnstile?.render(widgetRef.current, {
@@ -99,7 +115,7 @@ export function RequestForm({
         "expired-callback": () => setToken(""),
         "error-callback": () => setToken(""),
       }) ?? null;
-  }, [scriptReady, siteKey]);
+  }, [scriptReady, siteKey, gateOn]);
 
   const dossier = form.numero_dossier.trim();
   const phoneDigits = form.phone.replace(/\D/g, "");
@@ -151,9 +167,29 @@ export function RequestForm({
     setForm((f) => ({ ...f, [key]: value }));
   }
 
+  /**
+   * A Turnstile token is single-use, so a refused attempt needs a fresh one.
+   *
+   * `reset` throws when there is no widget to reset — no site key configured,
+   * or the script never loaded. That throw used to escape into submit()'s catch
+   * and be reported as "vérifiez votre réseau", hiding the server's actual
+   * reason for refusing. Failing to reset is never worth an error message.
+   */
+  function resetTurnstile() {
+    setToken("");
+    if (!widgetId.current) return;
+    try {
+      window.turnstile?.reset(widgetId.current);
+    } catch {
+      /* nothing to reset */
+    }
+  }
+
   async function submit(e: React.FormEvent) {
     e.preventDefault();
     setError(null);
+
+    if (blocked) return setError(UNAVAILABLE);
 
     if (existing === null) {
       return setError("Indiquez si vous êtes déjà patient ou non.");
@@ -172,32 +208,37 @@ export function RequestForm({
 
     setSending(true);
     try {
-      const res = await fetch("/api/public/requests", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          ...form,
-          age: form.age || null,
-          is_existing_patient: existing,
-          numero_dossier: existing ? form.numero_dossier : "",
-          preferred_at: at,
-          doctor_slug: doctorSlug,
-          company,
-          turnstile_token: token,
-        }),
-      });
+      // Only the call itself counts as a network failure. Everything after it
+      // has an answer from the server, and that answer must reach the visitor.
+      let res: Response;
+      try {
+        res = await fetch("/api/public/requests", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            ...form,
+            age: form.age || null,
+            is_existing_patient: existing,
+            numero_dossier: existing ? form.numero_dossier : "",
+            preferred_at: at,
+            doctor_slug: doctorSlug,
+            company,
+            turnstile_token: token,
+          }),
+        });
+      } catch {
+        setError("Connexion impossible. Vérifiez votre réseau.");
+        return;
+      }
+
       const data = (await res.json().catch(() => ({}))) as { error?: string };
 
       if (!res.ok) {
         setError(data.error ?? "Envoi impossible. Réessayez.");
-        // The token is single-use; get a fresh one before another attempt.
-        window.turnstile?.reset(widgetId.current ?? undefined);
-        setToken("");
+        resetTurnstile();
         return;
       }
       setSent(true);
-    } catch {
-      setError("Connexion impossible. Vérifiez votre réseau.");
     } finally {
       setSending(false);
     }
@@ -245,10 +286,12 @@ export function RequestForm({
 
   return (
     <>
-      <Script
-        src="https://challenges.cloudflare.com/turnstile/v0/api.js?render=explicit"
-        onLoad={() => setScriptReady(true)}
-      />
+      {gateOn ? (
+        <Script
+          src="https://challenges.cloudflare.com/turnstile/v0/api.js?render=explicit"
+          onLoad={() => setScriptReady(true)}
+        />
+      ) : null}
 
       <form onSubmit={submit} className="rounded-2xl bg-white p-7 shadow-2xl sm:p-9">
         {/* Who and when — the two facts the visitor already chose. */}
@@ -442,7 +485,17 @@ export function RequestForm({
           </div>
         ) : null}
 
-        {siteKey ? <div ref={widgetRef} className="mt-5" /> : null}
+        {gateOn && siteKey ? <div ref={widgetRef} className="mt-5" /> : null}
+
+        {blocked ? (
+          <p
+            role="alert"
+            className="mt-5 flex items-start gap-2 rounded-xl border border-amber-200 bg-amber-50 px-3.5 py-2.5 text-sm text-amber-800"
+          >
+            <AlertCircle className="mt-0.5 h-4 w-4 shrink-0" />
+            <span>{UNAVAILABLE}</span>
+          </p>
+        ) : null}
 
         {error ? (
           <p
@@ -455,7 +508,7 @@ export function RequestForm({
 
         <button
           type="submit"
-          disabled={sending}
+          disabled={sending || blocked}
           className="mt-6 flex h-12 w-full items-center justify-center gap-2 rounded-xl bg-teal-600 font-semibold text-white transition-colors hover:bg-teal-700 disabled:opacity-60"
         >
           {sending ? (

@@ -98,15 +98,21 @@ export async function POST(
         ).toISOString(),
         duration_minutes: body.duration_minutes || 30,
         staff_notes: body.staff_notes?.slice(0, 500) ?? "",
-        desktop_patient_id: patientId,
-        desktop_appointment_id: appointment.id,
+        patient_id: patientId,
+        appointment_id: appointment.id,
         desktop_synced_at: new Date().toISOString(),
       })
       .eq("id", params.id);
 
     if (error) {
-      // doctor.db already has both records; only the bookkeeping failed. Say so
-      // precisely, so nobody creates the appointment a second time.
+      // Both records exist; only the bookkeeping failed. Say so precisely, so
+      // nobody creates the appointment a second time — and log the database's
+      // own reason, without which this is undiagnosable from the outside.
+      console.error(
+        `[requests/accept] ${params.id} booked (patient ${patientId}, ` +
+          `appointment ${appointment.id}) but not marked accepted:`,
+        error.message,
+      );
       return NextResponse.json(
         {
           error:

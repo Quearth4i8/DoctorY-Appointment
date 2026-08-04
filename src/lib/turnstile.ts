@@ -6,8 +6,22 @@ const VERIFY_URL = "https://challenges.cloudflare.com/turnstile/v0/siteverify";
  * `not_configured` is kept distinct from `failed` on purpose: a missing secret
  * is the operator's problem, and telling a patient they look like a robot
  * because of a deployment mistake is both wrong and impossible to debug.
+ *
+ * `disabled` is distinct from both: nobody's problem, someone's decision.
  */
-export type TurnstileResult = "ok" | "failed" | "not_configured";
+export type TurnstileResult = "ok" | "failed" | "not_configured" | "disabled";
+
+/**
+ * The gate is on unless it was switched off deliberately.
+ *
+ * Deciding from the *absence* of a secret would mean a deployment that forgot
+ * one env var silently loses its bot protection and looks fine. An explicit
+ * `false` cannot happen by accident, so a missing secret stays an error and
+ * only this turns the check off.
+ */
+export function turnstileEnabled(): boolean {
+  return process.env.NEXT_PUBLIC_TURNSTILE_ENABLED !== "false";
+}
 
 /**
  * Validates a Cloudflare Turnstile token server-side.
@@ -19,6 +33,8 @@ export async function verifyTurnstile(
   token: string | undefined,
   ip: string | undefined,
 ): Promise<TurnstileResult> {
+  if (!turnstileEnabled()) return "disabled";
+
   const secret = process.env.TURNSTILE_SECRET_KEY;
   if (!secret) return "not_configured";
   if (!token) return "failed";

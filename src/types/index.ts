@@ -145,8 +145,9 @@ export type AppointmentRequest = {
   scheduled_at: string | null;
   duration_minutes: number;
   staff_notes: string;
-  desktop_patient_id: number | null;
-  desktop_appointment_id: number | null;
+  /** The patient and appointment this request became. Null while pending. */
+  patient_id: string | null;
+  appointment_id: string | null;
 };
 
 /** What the secretary sends when approving a request. */

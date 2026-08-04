@@ -10,7 +10,7 @@ const FIELDS =
   "id, created_at, last_name, first_name, phone, gender, age, reason, " +
   "is_existing_patient, numero_dossier, dossier_verified, " +
   "preferred_at, preferred_period, status, reviewed_at, scheduled_at, " +
-  "duration_minutes, staff_notes, desktop_patient_id, desktop_appointment_id";
+  "duration_minutes, staff_notes, patient_id, appointment_id";
 
 /** Lists appointment requests for the review inbox. Staff only. */
 export async function GET(req: Request) {
