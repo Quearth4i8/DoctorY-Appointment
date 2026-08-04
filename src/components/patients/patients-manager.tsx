@@ -157,7 +157,7 @@ export function PatientsManager() {
           {patients.map((p, i) => {
             const name = p.display_name || `${p.first_name} ${p.last_name}`.trim();
             const meta = [
-              p.gender === "M" ? "Homme" : p.gender === "F" ? "Femme" : "",
+              p.gender === "M" || p.gender === "F" ? p.gender : "",
               p.age != null ? `${p.age} ans` : "",
               dossierLabel(p),
             ].filter(Boolean);

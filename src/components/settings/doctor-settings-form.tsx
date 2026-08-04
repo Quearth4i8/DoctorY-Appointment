@@ -7,8 +7,10 @@ import {
   Clock,
   Eye,
   EyeOff,
+  ImageOff,
   Loader2,
   MapPin,
+  Phone,
   Plus,
   Trash2,
   UserRound,
@@ -54,8 +56,11 @@ function toHours(days: DayForm[]): DayHours[] {
 export function DoctorSettingsForm({ doctor }: { doctor: Doctor }) {
   const router = useRouter();
 
+  // No `title`: it is "Dr" for every profile this app holds, filled in on the
+  // way out by `normalise()`. Asking for it was a field that could only be
+  // typed wrong. Leaving it out of the patch also leaves any value already in
+  // the column untouched, so a "Pr" set by hand survives a save from here.
   const [profile, setProfile] = useState({
-    title: doctor.title,
     full_name: doctor.full_name,
     specialty: doctor.specialty,
     bio: doctor.bio,
@@ -160,8 +165,17 @@ export function DoctorSettingsForm({ doctor }: { doctor: Doctor }) {
     <div className="flex flex-col gap-5">
       {/* Publication state reads as the headline, because it decides whether
           any of the rest is visible to patients at all. */}
-      <div className="flex flex-wrap items-center justify-between gap-4 rounded-2xl border bg-card bg-mesh px-6 py-5 shadow-card">
-        <div className="flex items-center gap-3">
+      <div
+        className={cn(
+          "flex flex-wrap items-center justify-between gap-4 rounded-2xl border px-6 py-5 shadow-card transition-colors",
+          // The border carries the state, so the answer to "is this live?" is
+          // legible from the edge of the screen without reading a word.
+          published
+            ? "border-emerald-200 bg-emerald-50/60"
+            : "border-border/70 bg-card bg-mesh",
+        )}
+      >
+        <div className="flex items-center gap-3.5">
           <span
             className={cn(
               "flex h-11 w-11 items-center justify-center rounded-xl",
@@ -174,12 +188,12 @@ export function DoctorSettingsForm({ doctor }: { doctor: Doctor }) {
           </span>
           <div>
             <p className="font-semibold text-foreground">
-              {published ? "Profil visible en ligne" : "Profil non publié"}
+              {published ? "Détails visibles en ligne" : "Détails non publiés"}
             </p>
             <p className="text-sm text-muted-foreground">
               {published
-                ? "Les patients peuvent le voir et demander un rendez-vous."
-                : "Invisible pour les patients tant qu'il n'est pas publié."}
+                ? "Les patients peuvent les consulter et demander un rendez-vous."
+                : "Invisibles pour les patients tant qu'ils ne sont pas publiés."}
             </p>
           </div>
         </div>
@@ -192,16 +206,40 @@ export function DoctorSettingsForm({ doctor }: { doctor: Doctor }) {
       </div>
 
       <div className="grid gap-5 xl:grid-cols-3">
-        <Card icon={UserRound} title="Identité" className="xl:col-span-2">
-          <div className="grid gap-4 sm:grid-cols-2">
-            <Row label="Titre">
-              <Input
-                value={profile.title}
-                onChange={(e) => setField("title", e.target.value)}
-                placeholder="Dr"
+        <Card
+          icon={UserRound}
+          title="Identité"
+          hint="Le nom et la photo en tête de la page."
+          className="xl:col-span-2"
+        >
+          {/* Photo beside the fields it is built from, so a wrong URL shows as a
+              broken face rather than as a string that looks fine. */}
+          <div className="mb-5 flex items-center gap-4 rounded-xl border border-border/60 bg-muted/25 p-3.5">
+            {profile.photo_url ? (
+              // eslint-disable-next-line @next/next/no-img-element
+              <img
+                src={profile.photo_url}
+                alt=""
+                className="h-16 w-16 shrink-0 rounded-xl border border-border/60 bg-card object-cover"
               />
-            </Row>
-            <Row label="Nom complet" required>
+            ) : (
+              <span className="flex h-16 w-16 shrink-0 items-center justify-center rounded-xl border border-dashed border-border bg-card text-muted-foreground">
+                <ImageOff className="h-5 w-5" />
+              </span>
+            )}
+            <div className="min-w-0 flex-1">
+              <Row label="Photo (URL)">
+                <Input
+                  value={profile.photo_url}
+                  onChange={(e) => setField("photo_url", e.target.value)}
+                  placeholder="https://…"
+                />
+              </Row>
+            </div>
+          </div>
+
+          <div className="grid gap-4 sm:grid-cols-2">
+            <Row label="Nom complet">
               <Input
                 value={profile.full_name}
                 onChange={(e) => setField("full_name", e.target.value)}
@@ -212,13 +250,6 @@ export function DoctorSettingsForm({ doctor }: { doctor: Doctor }) {
                 value={profile.specialty}
                 onChange={(e) => setField("specialty", e.target.value)}
                 placeholder="Médecine générale"
-              />
-            </Row>
-            <Row label="Photo (URL)">
-              <Input
-                value={profile.photo_url}
-                onChange={(e) => setField("photo_url", e.target.value)}
-                placeholder="https://…"
               />
             </Row>
             <div className="sm:col-span-2">
@@ -235,7 +266,7 @@ export function DoctorSettingsForm({ doctor }: { doctor: Doctor }) {
           </div>
         </Card>
 
-        <Card icon={Wallet} title="Contact">
+        <Card icon={Phone} title="Contact" hint="Comment le cabinet est joignable.">
           <div className="flex flex-col gap-4">
             <Row label="Téléphone">
               <Input
@@ -267,7 +298,100 @@ export function DoctorSettingsForm({ doctor }: { doctor: Doctor }) {
           </div>
         </Card>
 
-        <Card icon={MapPin} title="Localisation">
+        <Card
+          icon={Clock}
+          title="Horaires de consultation"
+          hint="Préciser ici les hauraires de votre médecin"
+          className="xl:col-span-2"
+        >
+          <ul className="flex flex-col divide-y divide-border/60">
+            {DAY_LABELS.map((label, i) => {
+              const day = days[i];
+              return (
+                <li
+                  key={label}
+                  className="flex flex-wrap items-center gap-3 py-2.5 first:pt-0 last:pb-0"
+                >
+                  <button
+                    type="button"
+                    onClick={() => setDay(i, { open: !day.open })}
+                    aria-pressed={day.open}
+                    className={cn(
+                      "h-9 w-28 shrink-0 rounded-lg text-xs font-semibold capitalize transition-colors",
+                      day.open
+                        ? "bg-primary/10 text-primary"
+                        : "bg-secondary text-muted-foreground hover:bg-secondary/80",
+                    )}
+                  >
+                    {label}
+                  </button>
+
+                  {day.open ? (
+                    <div className="flex flex-wrap items-center gap-2">
+                      {day.ranges.map((r, k) => (
+                        <span
+                          key={k}
+                          className="flex items-center gap-1.5 rounded-lg border border-border/60 bg-muted/25 px-1.5 py-1"
+                        >
+                          <Input
+                            type="time"
+                            value={r[0]}
+                            onChange={(e) => setRange(i, k, 0, e.target.value)}
+                            className="h-9 w-[8.25rem] border-transparent bg-card px-2.5 tnum"
+                          />
+                          <span className="text-muted-foreground">–</span>
+                          <Input
+                            type="time"
+                            value={r[1]}
+                            onChange={(e) => setRange(i, k, 1, e.target.value)}
+                            className="h-9 w-[8.25rem] border-transparent bg-card px-2.5 tnum"
+                          />
+                          {day.ranges.length > 1 ? (
+                            <button
+                              type="button"
+                              aria-label="Supprimer la plage"
+                              onClick={() =>
+                                setDay(i, {
+                                  ranges: day.ranges.filter((_, j) => j !== k),
+                                })
+                              }
+                              className="flex h-7 w-7 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-card hover:text-destructive"
+                            >
+                              <Trash2 className="h-3.5 w-3.5" />
+                            </button>
+                          ) : null}
+                        </span>
+                      ))}
+                      {day.ranges.length < 2 ? (
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          className="gap-1.5 text-muted-foreground"
+                          onClick={() =>
+                            setDay(i, {
+                              ranges: [...day.ranges, ["15:00", "18:00"]],
+                            })
+                          }
+                        >
+                          <Plus className="h-3.5 w-3.5" /> Après-midi
+                        </Button>
+                      ) : null}
+                    </div>
+                  ) : (
+                    <span className="text-sm text-muted-foreground/70">Fermé</span>
+                  )}
+                </li>
+              );
+            })}
+          </ul>
+        </Card>
+
+        <Card
+          icon={MapPin}
+          title="Localisation"
+          hint="Emplacement du cabinet"
+          
+        >
           <div className="flex flex-col gap-4">
             <Row label="Lien Google Maps ou coordonnées">
               <Input
@@ -326,89 +450,26 @@ export function DoctorSettingsForm({ doctor }: { doctor: Doctor }) {
           </div>
         </Card>
 
-        <Card icon={Clock} title="Horaires de consultation" className="xl:col-span-2">
-          <ul className="flex flex-col divide-y">
-            {DAY_LABELS.map((label, i) => {
-              const day = days[i];
-              return (
-                <li
-                  key={label}
-                  className="flex flex-wrap items-center gap-3 py-3 first:pt-0 last:pb-0"
-                >
-                  <button
-                    type="button"
-                    onClick={() => setDay(i, { open: !day.open })}
-                    className={cn(
-                      "h-8 w-24 shrink-0 rounded-lg text-xs font-semibold transition-colors",
-                      day.open
-                        ? "bg-accent text-accent-foreground"
-                        : "bg-secondary text-muted-foreground",
-                    )}
-                  >
-                    {label}
-                  </button>
+        <Card
+          icon={Wallet}
+          title="Tarifs"
+          hint="Préciser ici les Tarifs de votre médecin"
+          // Spans the row so the five cards close out three exact rows
+          // (2+1, 2+1, 3) instead of leaving two empty cells at the bottom.
+          className="xl:col-span-3"
+        >
+          <div className="grid gap-2.5 sm:grid-cols-2 xl:grid-cols-3">
+            {tariffs.length === 0 ? (
+              <p className="rounded-xl border border-dashed border-border bg-muted/25 px-3.5 py-6 text-center text-xs text-muted-foreground sm:col-span-2 xl:col-span-3">
+                Aucun tarif affiché aux patients.
+              </p>
+            ) : null}
 
-                  {day.open ? (
-                    <div className="flex flex-wrap items-center gap-2">
-                      {day.ranges.map((r, k) => (
-                        <span key={k} className="flex items-center gap-1.5">
-                          <Input
-                            type="time"
-                            value={r[0]}
-                            onChange={(e) => setRange(i, k, 0, e.target.value)}
-                            className="h-9 w-[6.5rem] tnum"
-                          />
-                          <span className="text-muted-foreground">–</span>
-                          <Input
-                            type="time"
-                            value={r[1]}
-                            onChange={(e) => setRange(i, k, 1, e.target.value)}
-                            className="h-9 w-[6.5rem] tnum"
-                          />
-                          {day.ranges.length > 1 ? (
-                            <button
-                              type="button"
-                              aria-label="Supprimer la plage"
-                              onClick={() =>
-                                setDay(i, {
-                                  ranges: day.ranges.filter((_, j) => j !== k),
-                                })
-                              }
-                              className="flex h-8 w-8 items-center justify-center rounded-md text-muted-foreground hover:bg-secondary hover:text-destructive"
-                            >
-                              <Trash2 className="h-3.5 w-3.5" />
-                            </button>
-                          ) : null}
-                        </span>
-                      ))}
-                      {day.ranges.length < 2 ? (
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          className="gap-1.5 text-muted-foreground"
-                          onClick={() =>
-                            setDay(i, {
-                              ranges: [...day.ranges, ["15:00", "18:00"]],
-                            })
-                          }
-                        >
-                          <Plus className="h-3.5 w-3.5" /> Après-midi
-                        </Button>
-                      ) : null}
-                    </div>
-                  ) : (
-                    <span className="text-sm text-muted-foreground">Fermé</span>
-                  )}
-                </li>
-              );
-            })}
-          </ul>
-        </Card>
-
-        <Card icon={Wallet} title="Tarifs">
-          <div className="flex flex-col gap-3">
             {tariffs.map((t, i) => (
-              <div key={i} className="flex items-center gap-2">
+              <div
+                key={i}
+                className="flex items-center gap-2 rounded-xl border border-border/60 bg-muted/25 p-1.5"
+              >
                 <Input
                   value={t.label}
                   onChange={(e) =>
@@ -419,28 +480,38 @@ export function DoctorSettingsForm({ doctor }: { doctor: Doctor }) {
                     )
                   }
                   placeholder="Consultation"
-                  className="flex-1"
+                  className="h-9 flex-1 border-transparent bg-card"
                 />
-                <Input
-                  value={String(t.amount)}
-                  onChange={(e) =>
-                    setTariffs((ts) =>
-                      ts.map((x, j) =>
-                        j === i
-                          ? { ...x, amount: Number(e.target.value.replace(/\D/g, "")) || 0 }
-                          : x,
-                      ),
-                    )
-                  }
-                  inputMode="numeric"
-                  className="w-20 tnum"
-                />
-                <span className="text-sm text-muted-foreground">DT</span>
+                {/* The unit lives inside the field: a bare number beside a
+                    floating "DT" reads as two things to fill in. */}
+                <div className="relative w-24 shrink-0">
+                  <Input
+                    value={String(t.amount)}
+                    onChange={(e) =>
+                      setTariffs((ts) =>
+                        ts.map((x, j) =>
+                          j === i
+                            ? {
+                                ...x,
+                                amount:
+                                  Number(e.target.value.replace(/\D/g, "")) || 0,
+                              }
+                            : x,
+                        ),
+                      )
+                    }
+                    inputMode="numeric"
+                    className="h-9 border-transparent bg-card pr-9 text-right tnum"
+                  />
+                  <span className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-xs font-medium text-muted-foreground">
+                    DT
+                  </span>
+                </div>
                 <button
                   type="button"
                   aria-label="Supprimer le tarif"
                   onClick={() => setTariffs((ts) => ts.filter((_, j) => j !== i))}
-                  className="flex h-9 w-9 shrink-0 items-center justify-center rounded-md text-muted-foreground hover:bg-secondary hover:text-destructive"
+                  className="flex h-8 w-8 shrink-0 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-card hover:text-destructive"
                 >
                   <Trash2 className="h-4 w-4" />
                 </button>
@@ -460,8 +531,15 @@ export function DoctorSettingsForm({ doctor }: { doctor: Doctor }) {
         </Card>
       </div>
 
-      <div className="flex justify-end">
-        <Button size="lg" onClick={save} disabled={saving} className="w-full sm:w-48">
+      {/* Sticky, because this form is taller than the screen and a save button
+          that scrolls away is a save button people forget to press. */}
+      <div className="sticky bottom-0 z-20 -mx-4 flex items-center justify-end gap-4 border-t border-border/70 bg-background/85 px-4 py-3 backdrop-blur sm:-mx-6 sm:px-6">
+        <Button
+          size="lg"
+          onClick={save}
+          disabled={saving}
+          className="w-full gap-2 shadow-card sm:w-48"
+        >
           {saving ? (
             <Loader2 className="h-4 w-4 animate-spin" />
           ) : (
@@ -477,25 +555,38 @@ export function DoctorSettingsForm({ doctor }: { doctor: Doctor }) {
 function Card({
   icon: Icon,
   title,
+  hint,
   className,
   children,
 }: {
   icon: React.ComponentType<{ className?: string }>;
   title: string;
+  /** One line saying where this ends up, so the field labels can stay short. */
+  hint?: string;
   className?: string;
   children: React.ReactNode;
 }) {
   return (
     <section
-      className={cn("rounded-2xl border bg-card p-6 shadow-card", className)}
+      className={cn(
+        "flex flex-col rounded-2xl border border-border/70 bg-card shadow-card",
+        className,
+      )}
     >
-      <h2 className="mb-5 flex items-center gap-2 text-[0.95rem] font-semibold text-foreground">
-        <span className="flex h-9 w-9 items-center justify-center rounded-lg bg-secondary text-muted-foreground">
+      <header className="flex items-start gap-3 border-b border-border/60 bg-muted/30 px-6 py-4">
+        <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-primary/10 text-primary">
           <Icon className="h-[1.05rem] w-[1.05rem]" />
         </span>
-        {title}
-      </h2>
-      {children}
+        <div className="min-w-0">
+          <h2 className="text-[0.95rem] font-semibold leading-tight text-foreground">
+            {title}
+          </h2>
+          {hint ? (
+            <p className="mt-0.5 text-xs text-muted-foreground">{hint}</p>
+          ) : null}
+        </div>
+      </header>
+      <div className="flex-1 p-6">{children}</div>
     </section>
   );
 }
@@ -503,10 +594,12 @@ function Card({
 function Row({
   label,
   required,
+  hint,
   children,
 }: {
   label: string;
   required?: boolean;
+  hint?: string;
   children: React.ReactNode;
 }) {
   return (
@@ -516,6 +609,7 @@ function Row({
         {required ? <span className="ml-0.5 text-destructive">*</span> : null}
       </Label>
       {children}
+      {hint ? <p className="text-xs text-muted-foreground">{hint}</p> : null}
     </div>
   );
 }

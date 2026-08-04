@@ -2,7 +2,6 @@ import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import {
   CalendarDays,
-  CalendarPlus,
   Clock,
   Mail,
   MapPin,
@@ -95,13 +94,6 @@ export default async function DoctorPage({
               ) : null}
             </div>
 
-            <a
-              href="#creneaux"
-              className="flex h-12 shrink-0 items-center gap-2 rounded-xl bg-teal-600 px-6 font-semibold text-white shadow-lg shadow-teal-600/20 transition-colors hover:bg-teal-700"
-            >
-              <CalendarPlus className="h-[1.15rem] w-[1.15rem]" />
-              Choisir un créneau
-            </a>
           </div>
         </div>
 

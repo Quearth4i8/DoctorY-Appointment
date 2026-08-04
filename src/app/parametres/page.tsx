@@ -12,7 +12,7 @@ import { getStaff } from "@/lib/supabase/server";
 export const dynamic = "force-dynamic";
 
 export const metadata: Metadata = {
-  title: "Paramètres — DoctorY",
+  title: "Détails du médecin — DoctorY",
 };
 
 export default async function ParametresPage() {
@@ -25,23 +25,20 @@ export default async function ParametresPage() {
   return (
     <AppShell staff={staff}>
       <div className="flex flex-col gap-6">
-        <div className="flex flex-wrap items-end justify-between gap-3">
+        <div className="flex flex-wrap items-end justify-between gap-4">
           <div>
-            <h1 className="text-xl font-bold tracking-tight text-foreground">
-              Page publique
+            <h1 className="text-[1.6rem] font-bold leading-none tracking-tight text-foreground">
+              Détails du médecin
             </h1>
-            <p className="mt-0.5 text-sm text-muted-foreground">
-              Ce que les patients voient avant de demander un rendez-vous.
-            </p>
           </div>
 
           {doctor?.is_published ? (
             <Link
               href={`/medecins/${doctor.slug}`}
               target="_blank"
-              className="flex items-center gap-1.5 text-sm font-medium text-primary hover:underline"
+              className="inline-flex h-10 items-center gap-2 rounded-xl border border-border/70 bg-card px-4 text-sm font-medium text-foreground shadow-card transition-all hover:-translate-y-px hover:text-primary hover:shadow-card-hover"
             >
-              Voir la page publique
+              Voir en ligne
               <ExternalLink className="h-3.5 w-3.5" />
             </Link>
           ) : null}
@@ -49,8 +46,8 @@ export default async function ParametresPage() {
 
         {doctor ? (
           <>
-            <PairingCard />
             <DoctorSettingsForm doctor={doctor} />
+            <PairingCard />
           </>
         ) : (
           <div className="rounded-2xl border border-dashed bg-card/50 px-6 py-16 text-center">

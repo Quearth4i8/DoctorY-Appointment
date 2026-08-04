@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 
+import { createAdminClient } from "@/lib/supabase/admin";
 import { createClient } from "@/lib/supabase/server";
 import { findPatientByDossier } from "@/lib/front-desk";
 import { getDoctorBySlug } from "@/lib/doctors";
@@ -151,6 +152,15 @@ export async function POST(req: Request) {
     return bad("Vérification anti-robot échouée. Rechargez la page.", 403);
   }
 
+  // 3b. Local testing: wipe the counter, do not disable it.
+  //
+  //     The caps live inside submit_appointment_request(), and dev and the
+  //     deployed site share one Supabase project — so relaxing them in SQL
+  //     would relax them for real patients too. Clearing the rows they count
+  //     instead means the very same function runs here as in production, with
+  //     nothing to drift out of sync, and nothing to remember to undo.
+  if (rateLimitBypassed()) await clearRecentFor(phoneDigits, hashIp(ip));
+
   // 4. Validate, rate-limit and insert in one database call.
   //
   //    submit_appointment_request is SECURITY DEFINER: it enforces the 24h caps
@@ -197,6 +207,57 @@ export async function POST(req: Request) {
 
 const TOO_MANY =
   "Vous avez déjà envoyé plusieurs demandes. Le secrétariat vous rappellera — merci de patienter.";
+
+/**
+ * Whether to clear the submission counter before inserting. Local only.
+ *
+ * Two conditions, not one. The env var alone would be a single stray value in a
+ * hosting dashboard between real patients and an open form; `next build` sets
+ * NODE_ENV to production, so on a deployed site this is false whatever the
+ * variable says, and the call below is dead code.
+ */
+function rateLimitBypassed(): boolean {
+  return (
+    process.env.NODE_ENV !== "production" &&
+    process.env.PUBLIC_REQUESTS_NO_RATE_LIMIT === "true"
+  );
+}
+
+/**
+ * Deletes the last 24h of requests from this phone and this IP — exactly the
+ * rows the caps count, and nothing else.
+ *
+ * Needs the service-role key: `anon` cannot delete from this table and must not
+ * be able to. Without one, this is a no-op and the caps simply apply as usual,
+ * which is a working form rather than a broken one.
+ */
+async function clearRecentFor(phone: string, ipHash: string | null) {
+  const admin = createAdminClient();
+  if (!admin) {
+    console.warn(
+      "[public/requests] PUBLIC_REQUESTS_NO_RATE_LIMIT is set but " +
+        "SUPABASE_SERVICE_ROLE_KEY is missing — the daily caps still apply.",
+    );
+    return;
+  }
+
+  const since = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
+  await admin
+    .from("appointment_requests")
+    .delete()
+    .eq("phone", phone)
+    .gte("created_at", since);
+
+  // The per-IP cap counts across phone numbers, so testing with a fresh number
+  // each time would still trip it after three tries.
+  if (ipHash) {
+    await admin
+      .from("appointment_requests")
+      .delete()
+      .eq("submitted_ip_hash", ipHash)
+      .gte("created_at", since);
+  }
+}
 
 // `code` is for whoever is debugging a deployment: the visitor-facing message
 // stays vague, the network tab says exactly which piece is missing.

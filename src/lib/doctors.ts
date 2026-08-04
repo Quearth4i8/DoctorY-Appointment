@@ -17,7 +17,10 @@ function normalise(row: Record<string, unknown>): Doctor {
   return {
     id: String(row.id),
     slug: String(row.slug),
-    title: String(row.title ?? "Dr"),
+    // Nobody types this: every profile here is a doctor's, so "Dr" is the
+    // answer unless the row was deliberately given another one. `??` alone
+    // would let an empty string through and leave the name bare.
+    title: String(row.title ?? "").trim() || "Dr",
     full_name: String(row.full_name ?? ""),
     specialty: String(row.specialty ?? ""),
     bio: String(row.bio ?? ""),

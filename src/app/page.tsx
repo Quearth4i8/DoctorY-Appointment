@@ -5,8 +5,6 @@ import {
   ArrowRight,
   CalendarPlus,
   Clock,
-  PhoneCall,
-  Search,
   ShieldCheck,
   Stethoscope,
 } from "lucide-react";
@@ -22,24 +20,6 @@ export const metadata: Metadata = {
   description:
     "Trouvez votre médecin, consultez ses horaires et ses tarifs, et demandez un rendez-vous en quelques minutes.",
 };
-
-const STEPS = [
-  {
-    icon: Search,
-    title: "Trouvez votre médecin",
-    text: "Consultez son profil : spécialité, adresse, horaires de consultation et tarifs.",
-  },
-  {
-    icon: CalendarPlus,
-    title: "Envoyez votre demande",
-    text: "Indiquez le jour qui vous arrange et le motif. Aucun compte à créer.",
-  },
-  {
-    icon: PhoneCall,
-    title: "Le secrétariat vous rappelle",
-    text: "Votre demande est examinée, puis confirmée par téléphone avec l'heure exacte.",
-  },
-];
 
 const POINTS = [
   {
@@ -73,8 +53,10 @@ export default async function LandingPage() {
             className="absolute inset-0 bg-cover bg-center"
             style={{ backgroundImage: "url(/bg_image.png)" }}
           />
-          {/* Fades the artwork into the next section instead of cutting it off. */}
-          <div className="absolute inset-x-0 bottom-0 h-32 bg-gradient-to-b from-transparent to-white" />
+          {/* Fades the artwork into the next section instead of cutting it off.
+              Taller now that the photo dissolves into it rather than sitting on
+              top: the two fades overlap, so the hand-off has to be gradual. */}
+          <div className="absolute inset-x-0 bottom-0 h-48 bg-gradient-to-b from-transparent to-white" />
 
           <div className="relative mx-auto grid w-full max-w-[1600px] items-center gap-12 px-4 py-20 sm:px-6 lg:px-8 lg:grid-cols-2 lg:py-28">
             <div className="animate-slide-up">
@@ -103,18 +85,15 @@ export default async function LandingPage() {
                   <CalendarPlus className="h-[1.15rem] w-[1.15rem]" />
                   Trouver un médecin
                 </Link>
-                <Link
-                  href="#comment"
-                  className="flex h-12 items-center gap-2 rounded-xl border border-slate-200 bg-white px-6 font-semibold text-slate-700 transition-colors hover:bg-slate-50"
-                >
-                  Comment ça marche
-                  <ArrowRight className="h-4 w-4" />
-                </Link>
               </div>
             </div>
 
             <div className="relative hidden lg:block">
               <div className="absolute -right-10 -top-10 h-72 w-72 rounded-full bg-teal-400/10 blur-3xl" />
+              {/* Fades out at the bottom instead of ending on a hard rounded
+                  edge and a drop shadow, which read as a card pasted onto the
+                  page rather than part of it. The shadow goes with it — there is
+                  nothing left down there to cast one. */}
               <Image
                 src="/home1.png"
                 alt="Un médecin vous accueille"
@@ -122,50 +101,16 @@ export default async function LandingPage() {
                 height={1092}
                 priority
                 sizes="(min-width: 1024px) 45vw, 100vw"
-                className="relative w-full rounded-3xl object-cover shadow-2xl"
+                className="fade-bottom relative w-full rounded-3xl object-cover"
               />
             </div>
           </div>
         </section>
 
-        {/* How it works */}
-        <section id="comment" className="border-t border-slate-100 bg-slate-50/60">
-          <div className="mx-auto w-full max-w-[1600px] px-4 py-20 sm:px-6 lg:px-8">
-            <div className="max-w-2xl">
-              <h2 className="text-3xl font-bold tracking-tight text-slate-900">
-                Comment ça marche
-              </h2>
-              <p className="mt-3 text-slate-600">
-                Trois étapes, aucune inscription.
-              </p>
-            </div>
-
-            <ol className="mt-10 grid gap-5 md:grid-cols-3">
-              {STEPS.map(({ icon: Icon, title, text }, i) => (
-                <li
-                  key={title}
-                  className="relative rounded-2xl border border-slate-200 bg-white p-7 shadow-sm"
-                >
-                  <span className="absolute right-6 top-6 text-4xl font-bold text-slate-100">
-                    {i + 1}
-                  </span>
-                  <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-teal-50 text-teal-600">
-                    <Icon className="h-6 w-6" />
-                  </div>
-                  <h3 className="mt-4 text-lg font-semibold text-slate-800">
-                    {title}
-                  </h3>
-                  <p className="mt-2 text-sm leading-relaxed text-slate-500">
-                    {text}
-                  </p>
-                </li>
-              ))}
-            </ol>
-          </div>
-        </section>
-
-        {/* Doctors */}
-        <section className="border-t border-slate-100">
+        {/* Doctors. No border: the hero above already dissolves into white, and
+            a rule drawn across the end of that fade puts back the hard edge the
+            fade exists to remove. */}
+        <section>
           <div className="mx-auto w-full max-w-[1600px] px-4 py-20 sm:px-6 lg:px-8">
             <div className="flex flex-wrap items-end justify-between gap-4">
               <div className="max-w-2xl">

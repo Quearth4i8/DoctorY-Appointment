@@ -88,6 +88,26 @@ body {
   .tnum {
     font-variant-numeric: tabular-nums;
   }
+
+  /*
+   * Native time fields.
+   *
+   * How wide one of these needs to be is not ours to decide: the browser picks
+   * 24-hour or 12-hour from its own locale, and "08:00 AM" plus the clock button
+   * is half again the width of "08:00". Both have to fit, so the field is sized
+   * for the longer one and the picker button is kept tight against the value
+   * rather than pushed past the edge.
+   */
+  input[type="time"]::-webkit-calendar-picker-indicator {
+    margin-inline-start: 0.125rem;
+    padding: 0;
+    opacity: 0.45;
+    cursor: pointer;
+    transition: opacity 0.15s ease;
+  }
+  input[type="time"]::-webkit-calendar-picker-indicator:hover {
+    opacity: 0.9;
+  }
 }
 
 @layer utilities {
@@ -103,6 +123,18 @@ body {
   .scrollbar-slim::-webkit-scrollbar-thumb {
     background-color: hsl(var(--border));
     border-radius: 9999px;
+  }
+
+  /*
+   * Dissolves the bottom edge of an image into whatever is behind it.
+   *
+   * A mask rather than a gradient overlay: an overlay has to know the exact
+   * colour it is fading towards, and gets it wrong the moment the section
+   * behind changes. This fades to transparent, so it is right against anything.
+   */
+  .fade-bottom {
+    -webkit-mask-image: linear-gradient(to bottom, #000 58%, transparent 100%);
+    mask-image: linear-gradient(to bottom, #000 58%, transparent 100%);
   }
 
   /* Soft tinted wash used behind hero panels and section headers. */

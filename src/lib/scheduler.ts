@@ -1,7 +1,14 @@
 import {
   addDays,
+  addMonths,
+  differenceInCalendarDays,
+  endOfMonth,
+  endOfWeek,
   format,
+  isBefore,
   parse,
+  startOfDay,
+  startOfMonth,
   startOfWeek,
 } from "date-fns";
 
@@ -40,8 +47,57 @@ export function weekDays(date: Date): Date[] {
   return Array.from({ length: 7 }, (_, i) => addDays(start, i));
 }
 
+export type CalendarView = "day" | "week" | "month";
+
+/**
+ * The days a view puts on screen, in order.
+ *
+ * Always a plain list, whatever the view, so everything downstream — the
+ * fetch range, the past-day rules, the grid itself — works off one shape and
+ * needs no idea which view it is serving.
+ *
+ * A month runs from the Monday on or before the 1st to the Sunday on or after
+ * the last, so the grid is a whole number of weeks and never a ragged edge.
+ * Those overflow days belong to the neighbouring months and are drawn faded,
+ * but they are real days and their appointments are real.
+ */
+export function viewDays(anchor: Date, view: CalendarView): Date[] {
+  if (view === "day") return [startOfDay(anchor)];
+  if (view === "week") return weekDays(anchor);
+
+  const first = startOfWeek(startOfMonth(anchor), { weekStartsOn: 1 });
+  const last = endOfWeek(endOfMonth(anchor), { weekStartsOn: 1 });
+  const count = differenceInCalendarDays(last, first) + 1;
+  return Array.from({ length: count }, (_, i) => addDays(first, i));
+}
+
+/** One step forward or back, in whatever unit the current view counts in. */
+export function stepAnchor(anchor: Date, view: CalendarView, dir: 1 | -1): Date {
+  if (view === "day") return addDays(anchor, dir);
+  if (view === "week") return addDays(anchor, dir * 7);
+  return addMonths(anchor, dir);
+}
+
 export function fmtDateKey(date: Date): string {
   return format(date, "yyyy-MM-dd");
+}
+
+/**
+ * Whether `day` falls before today — the one rule behind every "no going back"
+ * check in the agenda, so they cannot drift apart.
+ *
+ * Day granularity, and deliberately not "earlier than now": the secretary
+ * routinely records something that happened this morning, and a boundary that
+ * crept forward through the day would make the grid start refusing its own
+ * slots by the afternoon. Today is open all day; yesterday never is.
+ */
+export function isPastDay(day: Date): boolean {
+  return isBefore(startOfDay(day), startOfDay(new Date()));
+}
+
+/** Today as "yyyy-MM-dd" — the `min` of a date input, and a comparable key. */
+export function todayKey(): string {
+  return fmtDateKey(new Date());
 }
 
 /** Parse the backend datetime string into a JS Date (local). */
@@ -68,40 +124,51 @@ export type StatusMeta = {
   badge: string; // classes for a small badge
 };
 
+/**
+ * Light surfaces, saturated bars.
+ *
+ * The block backgrounds sit at the 50/200 end so a full week of them stays calm
+ * and the patient's name keeps its contrast; the status is carried by the solid
+ * accent bar down the left edge, which is legible at a glance even on a block
+ * squeezed to 22px. Colouring the whole block strongly instead made a busy day
+ * read as an alarm.
+ */
 export const STATUS_META: Record<AppointmentStatus, StatusMeta> = {
   a_venir: {
     value: "a_venir",
     label: "À venir",
     dot: "bg-sky-500",
-    block: "bg-sky-100 border-sky-300 text-sky-900 hover:border-sky-400",
+    block: "bg-sky-50 border-sky-200 text-sky-900 hover:border-sky-300",
     bar: "bg-sky-500",
-    badge: "bg-sky-100 text-sky-700 border border-sky-200",
+    badge: "bg-sky-50 text-sky-700 border border-sky-200",
   },
   approuve: {
     value: "approuve",
     label: "Confirmé",
     dot: "bg-emerald-500",
     block:
-      "bg-emerald-100 border-emerald-300 text-emerald-900 hover:border-emerald-400",
+      "bg-emerald-50 border-emerald-200 text-emerald-900 hover:border-emerald-300",
     bar: "bg-emerald-500",
-    badge: "bg-emerald-100 text-emerald-700 border border-emerald-200",
+    badge: "bg-emerald-50 text-emerald-700 border border-emerald-200",
   },
   passe: {
     value: "passe",
     label: "Passé",
-    dot: "bg-slate-500",
-    block: "bg-slate-200 border-slate-400 text-slate-700 hover:border-slate-500",
-    bar: "bg-slate-500",
-    badge: "bg-slate-200 text-slate-700 border border-slate-300",
+    dot: "bg-slate-400",
+    // Deliberately the quietest of the four: it is the state most blocks end up
+    // in, and history should recede behind what is still to come.
+    block: "bg-slate-50 border-slate-200 text-slate-500 hover:border-slate-300",
+    bar: "bg-slate-400",
+    badge: "bg-slate-100 text-slate-600 border border-slate-200",
   },
   annule: {
     value: "annule",
     label: "Annulé",
     dot: "bg-rose-500",
     block:
-      "bg-rose-100 border-rose-300 text-rose-700 hover:border-rose-400 line-through decoration-rose-400/60",
+      "bg-rose-50 border-rose-200 text-rose-700 hover:border-rose-300 line-through decoration-rose-400/50",
     bar: "bg-rose-500",
-    badge: "bg-rose-100 text-rose-700 border border-rose-200",
+    badge: "bg-rose-50 text-rose-700 border border-rose-200",
   },
 };
 
@@ -114,6 +181,32 @@ export const STATUS_ORDER: AppointmentStatus[] = [
 
 export function statusMeta(status: string): StatusMeta {
   return STATUS_META[(status as AppointmentStatus)] ?? STATUS_META.a_venir;
+}
+
+/**
+ * What an appointment reads as right now, which is not always what is stored.
+ *
+ * "Passé" stopped being something the secretary sets. It is what an appointment
+ * nobody touched turns into once its time has gone — so it is derived on
+ * display rather than written, which means it is right the moment the clock
+ * passes it, with no job to run and no row to update.
+ *
+ * Only `a_venir` ages this way. Confirmé and annulé are decisions somebody
+ * made, and time going by does not undo a decision; a cancelled appointment
+ * that has been and gone is still cancelled, not merely past.
+ *
+ * To the minute, deliberately — unlike `isPastDay`, which floors bookings at
+ * the day. This one answers "has it happened yet", and at 15:00 this morning's
+ * nine o'clock plainly has.
+ */
+export function effectiveStatus(appt: {
+  appointment_datetime: string;
+  status: AppointmentStatus;
+}): AppointmentStatus {
+  if (appt.status !== "a_venir") return appt.status;
+  return parseApptDate(appt.appointment_datetime) < new Date()
+    ? "passe"
+    : "a_venir";
 }
 
 export const DURATION_OPTIONS = [15, 30, 45, 60, 90];

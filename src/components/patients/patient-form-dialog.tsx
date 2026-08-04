@@ -22,6 +22,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { ApiError, createPatient, updatePatient } from "@/lib/client-api";
+import { todayKey } from "@/lib/scheduler";
 import type { PatientAdminInput, SafePatient } from "@/types";
 
 /** Matches the options the doctor's desktop app offers, so the two agree. */
@@ -30,13 +31,14 @@ const INSURANCE_OPTIONS = ["Aucune assurance", "CNAM", "Privée"] as const;
 /** Radix Select has no concept of an empty value, so "unset" needs a token. */
 const NONE = "__none__";
 
+// No `age`: it is not a field, it is what the date of birth means today. It is
+// computed on the way out, so there is no second copy to fall out of step.
 const EMPTY = {
   last_name: "",
   first_name: "",
   father_name: "",
   phone: "",
   gender: "",
-  age: "",
   date_of_birth: "",
   job: "",
   address: "",
@@ -47,6 +49,27 @@ const EMPTY = {
 
 type FormState = typeof EMPTY;
 
+/**
+ * Age from a date of birth, or null when there isn't a usable one.
+ *
+ * The strict format check matters: `date_of_birth` is a text column, and rows
+ * lifted from doctor.db may hold something this cannot read. Null then means
+ * "you tell me" rather than a wrong number, and the field stays typeable.
+ */
+function ageFromDob(dob: string): number | null {
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(dob)) return null;
+  const born = new Date(`${dob}T00:00:00`);
+  if (Number.isNaN(born.getTime())) return null;
+
+  const now = new Date();
+  let age = now.getFullYear() - born.getFullYear();
+  const months = now.getMonth() - born.getMonth();
+  // Not had this year's birthday yet.
+  if (months < 0 || (months === 0 && now.getDate() < born.getDate())) age -= 1;
+
+  return age >= 0 && age <= 130 ? age : null;
+}
+
 function fromPatient(p: SafePatient): FormState {
   return {
     last_name: p.last_name,
@@ -54,7 +77,6 @@ function fromPatient(p: SafePatient): FormState {
     father_name: p.father_name,
     phone: p.phone,
     gender: p.gender,
-    age: p.age == null ? "" : String(p.age),
     date_of_birth: p.date_of_birth,
     job: p.job,
     address: p.address,
@@ -71,7 +93,9 @@ function toInput(f: FormState): PatientAdminInput {
     father_name: f.father_name.trim(),
     phone: f.phone.trim(),
     gender: f.gender,
-    age: f.age ? Number(f.age) : null,
+    // Still written to the column the desktop app and the public form both
+    // read — it is just derived here rather than typed.
+    age: ageFromDob(f.date_of_birth),
     date_of_birth: f.date_of_birth.trim(),
     job: f.job.trim(),
     address: f.address.trim(),
@@ -105,9 +129,18 @@ export function PatientFormDialog({
     setForm((f) => ({ ...f, [key]: value }));
   }
 
+  const derivedAge = ageFromDob(form.date_of_birth);
+
   async function submit(force = false) {
     if (!form.last_name.trim()) {
       toast.error("Le nom est obligatoire.");
+      return;
+    }
+    // Tested through the age rather than for emptiness, so a legacy value this
+    // cannot read — doctor.db holds some as "12/03/1969" — is caught too. The
+    // date input shows those as blank anyway, so the field already looks unset.
+    if (derivedAge === null) {
+      toast.error("Renseignez une date de naissance valide.");
       return;
     }
     setSaving(true);
@@ -152,17 +185,40 @@ export function PatientFormDialog({
           <DialogDescription>
             {isEdit
               ? "Coordonnées et informations administratives."
-              : "Seul le nom est obligatoire."}
+              : "Le nom et la date de naissance sont obligatoires."}
           </DialogDescription>
         </DialogHeader>
 
         <div className="flex flex-col gap-7 px-6 py-6">
+          {/* First, because it is how this patient is referred to everywhere
+              else — on the carnet, on an ordonnance, over the phone. */}
+          <div className="flex flex-wrap items-center gap-4 rounded-xl border border-border/70 bg-muted/30 px-4 py-3.5">
+            <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-primary/10 text-primary">
+              <IdCard className="h-[1.05rem] w-[1.05rem]" />
+            </span>
+            <div className="min-w-0 flex-1 space-y-1.5">
+              <Label className="text-sm font-medium">N° de dossier</Label>
+              <Input
+                value={form.numero_dossier}
+                onChange={(e) => set("numero_dossier", e.target.value)}
+                placeholder="ex. 83/2026"
+                className="tnum bg-card sm:max-w-[16rem]"
+              />
+              <p className="text-xs text-muted-foreground">
+                {isEdit
+                  ? "Laisser vide pour conserver le numéro actuel."
+                  : "Laisser vide : le médecin en attribue un à la prochaine synchronisation."}
+              </p>
+            </div>
+          </div>
+
           <Section icon={UserRound} title="Identité">
             <div className="grid gap-4 sm:grid-cols-2">
               <Field label="Nom" required>
                 <Input
                   value={form.last_name}
                   onChange={(e) => set("last_name", e.target.value)}
+                  placeholder="Ben Ali"
                   autoFocus
                 />
               </Field>
@@ -170,48 +226,55 @@ export function PatientFormDialog({
                 <Input
                   value={form.first_name}
                   onChange={(e) => set("first_name", e.target.value)}
+                  placeholder="Mohamed"
                 />
               </Field>
               <Field label="Nom du père">
                 <Input
                   value={form.father_name}
                   onChange={(e) => set("father_name", e.target.value)}
+                  placeholder="Ahmed"
                 />
               </Field>
-              <div className="grid grid-cols-2 gap-3">
-                <Field label="Sexe">
-                  <Select
-                    value={form.gender || NONE}
-                    onValueChange={(v) => set("gender", v === NONE ? "" : v)}
-                  >
-                    <SelectTrigger>
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value={NONE}>—</SelectItem>
-                      <SelectItem value="M">Homme</SelectItem>
-                      <SelectItem value="F">Femme</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </Field>
-                <Field label="Âge">
-                  <Input
-                    value={form.age}
-                    onChange={(e) => set("age", e.target.value.replace(/\D/g, ""))}
-                    inputMode="numeric"
-                    maxLength={3}
-                    className="tnum"
-                  />
-                </Field>
-              </div>
-              <Field label="Date de naissance">
+              <Field label="Sexe">
+                <Select
+                  value={form.gender || NONE}
+                  onValueChange={(v) => set("gender", v === NONE ? "" : v)}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="—" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value={NONE}>—</SelectItem>
+                    <SelectItem value="M">M</SelectItem>
+                    <SelectItem value="F">F</SelectItem>
+                  </SelectContent>
+                </Select>
+              </Field>
+              <Field label="Date de naissance" required>
                 <Input
                   type="date"
                   value={form.date_of_birth}
                   onChange={(e) => set("date_of_birth", e.target.value)}
+                  max={todayKey()}
                   className="tnum"
                 />
               </Field>
+
+              {/* Not a field. Nothing here is typeable, nothing is submitted —
+                  it is the date above, read back as what it means today. It
+                  disappears rather than showing a placeholder, because an empty
+                  box invites someone to fill it in. */}
+              {derivedAge !== null ? (
+                <div className="space-y-1.5">
+                  <Label className="text-sm font-medium text-muted-foreground">
+                    Âge
+                  </Label>
+                  <p className="flex h-11 items-center rounded-lg bg-muted/50 px-3.5 text-[0.95rem] font-medium text-foreground tnum">
+                    {derivedAge} ans
+                  </p>
+                </div>
+              ) : null}
             </div>
           </Section>
 
@@ -239,6 +302,7 @@ export function PatientFormDialog({
                   <Input
                     value={form.address}
                     onChange={(e) => set("address", e.target.value)}
+                    placeholder="12 rue de Carthage, Tunis"
                   />
                 </Field>
               </div>
@@ -251,6 +315,7 @@ export function PatientFormDialog({
                 <Input
                   value={form.job}
                   onChange={(e) => set("job", e.target.value)}
+                  placeholder="Enseignant"
                 />
               </Field>
               <Field label="Assurance">
@@ -259,7 +324,7 @@ export function PatientFormDialog({
                   onValueChange={(v) => set("insurance_type", v === NONE ? "" : v)}
                 >
                   <SelectTrigger>
-                    <SelectValue />
+                    <SelectValue placeholder="—" />
                   </SelectTrigger>
                   <SelectContent>
                     <SelectItem value={NONE}>—</SelectItem>
@@ -271,23 +336,6 @@ export function PatientFormDialog({
                   </SelectContent>
                 </Select>
               </Field>
-              <div className="sm:col-span-2">
-                <Field
-                  label="N° de dossier"
-                  hint={
-                    isEdit
-                      ? "Laisser vide pour conserver le numéro actuel."
-                      : "Attribué automatiquement si vide."
-                  }
-                >
-                  <Input
-                    value={form.numero_dossier}
-                    onChange={(e) => set("numero_dossier", e.target.value)}
-                    placeholder="ex. 83/2026"
-                    className="tnum sm:max-w-[16rem]"
-                  />
-                </Field>
-              </div>
             </div>
           </Section>
         </div>

@@ -94,10 +94,14 @@ export async function listPatients(
   doctorId: string,
   search: string,
 ): Promise<SafePatient[]> {
+  // Archived = the doctor deleted them. The row survives so his old
+  // appointments keep a name on them, but they are not a patient any more:
+  // they must not appear in a search or be bookable again.
   let query = createClient()
     .from("patients")
     .select(PATIENT_FIELDS)
     .eq("doctor_id", doctorId)
+    .is("archived_at", null)
     .order("last_name")
     .order("first_name")
     .limit(500);
@@ -132,6 +136,7 @@ export async function getPatient(
     .from("patients")
     .select(PATIENT_FIELDS)
     .eq("doctor_id", doctorId)
+    .is("archived_at", null)
     .eq("id", id)
     .maybeSingle();
   return data ? toPatient(data as unknown as PatientRow) : null;
@@ -286,6 +291,29 @@ export async function listAppointments(
 /** The message the database's spacing rule should show as. */
 const TOO_CLOSE = "Il doit y avoir au moins 30 minutes entre deux rendez-vous.";
 
+const PAST_DATE = "Impossible de placer un rendez-vous à une date déjà passée.";
+
+/**
+ * Refuses a booking into a day that has already gone.
+ *
+ * Compared as "YYYY-MM-DD" strings, with a day of slack, and both of those are
+ * on purpose. `starts_at` is a naive timestamp holding the clinic's wall-clock
+ * time, while this runs on a server whose clock is UTC — so an exact instant
+ * comparison would reject a perfectly good booking made early in the morning,
+ * which is the worst way for this to fail.
+ *
+ * The UI enforces the precise rule, because it is the side that knows what day
+ * it is where the secretary is sitting. What this stops is the case the UI
+ * cannot: a tab left open since last week, or a request typed by hand, writing
+ * a date from last month. Being one day generous costs nothing against that.
+ */
+function assertNotPast(datetime: string): void {
+  const floor = new Date(Date.now() - 86_400_000).toISOString().slice(0, 10);
+  if (datetime.slice(0, 10) < floor) {
+    throw new FrontDeskError(400, PAST_DATE, "PAST_DATE");
+  }
+}
+
 function mapWriteError(error: { message: string; code?: string }): never {
   // 23P01 is an exclusion-constraint violation: the 30-minute rule.
   if (error.code === "23P01" || error.message.includes("appointments_min_gap")) {
@@ -298,6 +326,10 @@ export async function createAppointment(
   doctorId: string,
   input: NewAppointmentInput,
 ): Promise<{ id: string }> {
+  // Here rather than in the routes: accepting a request books through this same
+  // function, so guarding the one choke point covers both ways in.
+  assertNotPast(input.appointment_datetime);
+
   const { data, error } = await createClient()
     .from("appointments")
     .insert({
@@ -325,6 +357,24 @@ export async function updateAppointment(
     notes?: string | null;
   },
 ): Promise<void> {
+  // A *move* into the past is refused; an appointment already sitting there is
+  // not frozen. She still has to fix a duration or add a note on this morning's
+  // slot, and the edit form resends the datetime unchanged when she does — so
+  // compare against where the appointment currently is, not against the clock.
+  if (input.appointment_datetime) {
+    const { data: current } = await createClient()
+      .from("appointments")
+      .select("starts_at")
+      .eq("doctor_id", doctorId)
+      .eq("id", id)
+      .maybeSingle();
+
+    const now = (current as { starts_at?: string } | null)?.starts_at;
+    if (!now || toLocalStamp(now) !== input.appointment_datetime) {
+      assertNotPast(input.appointment_datetime);
+    }
+  }
+
   const patch: Record<string, unknown> = {};
   if (input.appointment_datetime) patch.starts_at = input.appointment_datetime;
   if (input.duration_minutes) patch.duration_minutes = input.duration_minutes;

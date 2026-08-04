@@ -1,6 +1,6 @@
 import Image from "next/image";
 import Link from "next/link";
-import { Home, LogIn } from "lucide-react";
+import { Home, Lock } from "lucide-react";
 
 /**
  * Header and footer for the pages a patient sees. No session required.
@@ -46,12 +46,18 @@ export function SiteHeader() {
             <Home className="h-[1.15rem] w-[1.15rem]" />
           </Link>
 
+          {/* Not a patient login — there is no patient account, and a bordered
+              "Connexion" beside the doctor list read like the way in. Named for
+              who it belongs to, with a padlock, and styled down to a quiet link
+              so it stops competing with what a visitor actually came to do. */}
           <Link
             href="/login"
-            className="flex h-10 items-center gap-2 rounded-xl border border-slate-200 px-4 text-sm font-semibold text-slate-700 transition-colors hover:border-teal-300 hover:bg-teal-50 hover:text-teal-700"
+            title="Réservé au secrétariat du cabinet. Aucun compte n'est nécessaire pour demander un rendez-vous."
+            className="flex h-10 items-center gap-2 rounded-xl px-3 text-sm font-medium text-slate-500 transition-colors hover:bg-slate-100 hover:text-slate-700"
           >
-            <LogIn className="h-4 w-4" />
-            Connexion
+            <Lock className="h-3.5 w-3.5" />
+            <span className="hidden sm:inline">Espace secrétariat</span>
+            <span className="sr-only sm:hidden">Espace secrétariat</span>
           </Link>
         </div>
       </div>
@@ -89,8 +95,8 @@ export function SiteFooter() {
             <FooterLink href="/medecins">Médecins</FooterLink>
           </FooterColumn>
 
-          <FooterColumn title="Professionnels">
-            <FooterLink href="/login">Espace personnel</FooterLink>
+          <FooterColumn title="Cabinet médical">
+            <FooterLink href="/login">Espace secrétariat</FooterLink>
           </FooterColumn>
         </div>
 

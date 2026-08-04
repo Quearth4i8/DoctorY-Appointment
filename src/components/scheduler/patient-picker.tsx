@@ -442,8 +442,8 @@ function NewPatientForm({
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value={NONE}>—</SelectItem>
-                <SelectItem value="M">Homme</SelectItem>
-                <SelectItem value="F">Femme</SelectItem>
+                <SelectItem value="M">M</SelectItem>
+                <SelectItem value="F">F</SelectItem>
               </SelectContent>
             </Select>
           </div>

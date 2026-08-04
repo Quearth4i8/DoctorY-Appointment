@@ -7,7 +7,6 @@ import { format } from "date-fns";
 import { fr } from "date-fns/locale";
 import {
   AlertCircle,
-  ArrowLeft,
   CalendarCheck,
   CheckCircle2,
   Home,
@@ -255,32 +254,24 @@ export function RequestForm({
           Votre demande a bien été envoyée
         </h1>
         <p className="mx-auto mt-2 max-w-md text-sm leading-relaxed text-slate-500">
-          Le secrétariat de {doctorName} va l&apos;examiner et vous rappellera au{" "}
-          <span className="font-semibold text-slate-700">{form.phone}</span> pour
-          confirmer. Ce n&apos;est pas encore un rendez-vous confirmé.
+          La secrétaire de {doctorName} examinera votre demande et vous appellera
+          au <span className="font-semibold text-slate-700">{form.phone}</span>{" "}
+          pour confirmer.
         </p>
         <p className="mt-4 inline-flex items-center gap-2 rounded-xl bg-slate-50 px-4 py-2.5 text-sm font-medium capitalize text-slate-700">
           <CalendarCheck className="h-4 w-4 text-teal-600" />
           {format(chosen, "EEEE d MMMM 'à' HH:mm", { locale: fr })}
         </p>
 
-        {/* Without these the visitor is stranded on a dead end. */}
-        <div className="mt-7 flex flex-col gap-3 sm:flex-row">
-          <Link
-            href="/"
-            className="flex h-12 flex-1 items-center justify-center gap-2 rounded-xl bg-teal-600 font-semibold text-white transition-colors hover:bg-teal-700"
-          >
-            <Home className="h-4 w-4" />
-            Retour à l&apos;accueil
-          </Link>
-          <Link
-            href={`/medecins/${doctorSlug}`}
-            className="flex h-12 flex-1 items-center justify-center gap-2 rounded-xl border border-slate-200 font-semibold text-slate-700 transition-colors hover:bg-slate-50"
-          >
-            <ArrowLeft className="h-4 w-4" />
-            Retour au médecin
-          </Link>
-        </div>
+
+        {/* Without this the visitor is stranded on a dead end. */}
+        <Link
+          href="/"
+          className="mt-7 flex h-12 items-center justify-center gap-2 rounded-xl bg-teal-600 font-semibold text-white transition-colors hover:bg-teal-700"
+        >
+          <Home className="h-4 w-4" />
+          Retour à l&apos;accueil
+        </Link>
       </div>
     );
   }
@@ -468,8 +459,8 @@ export function RequestForm({
                   </SelectTrigger>
                   <SelectContent>
                     <SelectItem value={NONE}>—</SelectItem>
-                    <SelectItem value="M">Homme</SelectItem>
-                    <SelectItem value="F">Femme</SelectItem>
+                    <SelectItem value="M">M</SelectItem>
+                    <SelectItem value="F">F</SelectItem>
                   </SelectContent>
                 </Select>
               </Field>

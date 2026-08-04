@@ -6,9 +6,9 @@ import { fr } from "date-fns/locale";
 import {
   CalendarClock,
   Check,
-  CheckCheck,
   Clock,
   Loader2,
+  Lock,
   Pencil,
   StickyNote,
   Trash2,
@@ -39,7 +39,14 @@ import {
   setAppointmentStatus,
   updateAppointment,
 } from "@/lib/client-api";
-import { DURATION_OPTIONS, parseApptDate, statusMeta } from "@/lib/scheduler";
+import {
+  DURATION_OPTIONS,
+  effectiveStatus,
+  isPastDay,
+  parseApptDate,
+  statusMeta,
+  todayKey,
+} from "@/lib/scheduler";
 import { cn } from "@/lib/utils";
 import type { Appointment, AppointmentStatus } from "@/types";
 
@@ -78,7 +85,13 @@ export function AppointmentDetailsDialog({
   if (!appointment) return null;
 
   const start = parseApptDate(appointment.appointment_datetime);
-  const meta = statusMeta(appointment.status);
+
+  // What it reads as, which for an untouched appointment whose time has gone is
+  // "Passé" even though `a_venir` is what is stored.
+  const meta = statusMeta(effectiveStatus(appointment));
+
+  // A day that has gone is history: it can be read, not rewritten.
+  const locked = isPastDay(start);
 
   async function changeStatus(status: AppointmentStatus) {
     setBusy(true);
@@ -99,10 +112,17 @@ export function AppointmentDetailsDialog({
       toast.error("Date et heure obligatoires.");
       return;
     }
+    const next = `${dateStr} ${timeStr}:00`;
+    // Leaving a past appointment where it is must keep working, so only a
+    // genuine change of slot is measured against today.
+    if (next !== appointment!.appointment_datetime && dateStr < todayKey()) {
+      toast.error("Impossible de déplacer un rendez-vous vers une date passée.");
+      return;
+    }
     setBusy(true);
     try {
       await updateAppointment(appointment!.id, {
-        appointment_datetime: `${dateStr} ${timeStr}:00`,
+        appointment_datetime: next,
         duration_minutes: duration,
         status: appointment!.status,
         notes: notes.trim() || null,
@@ -151,6 +171,7 @@ export function AppointmentDetailsDialog({
                 <Input
                   type="date"
                   value={dateStr}
+                  min={todayKey()}
                   onChange={(e) => setDateStr(e.target.value)}
                   className="h-11 text-base"
                 />
@@ -242,69 +263,75 @@ export function AppointmentDetailsDialog({
               ) : null}
             </div>
 
-            {/* Edit button */}
-            <Button
-              variant="outline"
-              className="w-full gap-2 h-11 border-primary/30 text-primary hover:bg-accent"
-              disabled={busy}
-              onClick={() => setEditing(true)}
-            >
-              <Pencil className="h-4 w-4" /> Modifier le rendez-vous
-            </Button>
+            {locked ? (
+              <p className="flex items-start gap-2 rounded-xl bg-secondary px-3.5 py-3 text-sm text-muted-foreground">
+                <Lock className="mt-0.5 h-4 w-4 shrink-0" />
+                Ce rendez-vous est passé : il ne peut plus être modifié.
+              </p>
+            ) : (
+              <>
+                {/* Edit button */}
+                <Button
+                  variant="outline"
+                  className="w-full gap-2 h-11 border-primary/30 text-primary hover:bg-accent"
+                  disabled={busy}
+                  onClick={() => setEditing(true)}
+                >
+                  <Pencil className="h-4 w-4" /> Modifier le rendez-vous
+                </Button>
 
-            {/* Status actions */}
-            <div className="grid grid-cols-2 gap-2">
-              {appointment.status !== "approuve" && (
-                <Button
-                  variant="outline"
-                  className="gap-2 border-emerald-200 text-emerald-700 hover:bg-emerald-50"
-                  disabled={busy}
-                  onClick={() => changeStatus("approuve")}
-                >
-                  <Check className="h-4 w-4" /> Confirmer
-                </Button>
-              )}
-              {appointment.status !== "passe" && (
-                <Button
-                  variant="outline"
-                  className="gap-2"
-                  disabled={busy}
-                  onClick={() => changeStatus("passe")}
-                >
-                  <CheckCheck className="h-4 w-4" /> Marquer passé
-                </Button>
-              )}
-              {appointment.status !== "annule" && (
-                <Button
-                  variant="outline"
-                  className="gap-2 border-rose-200 text-rose-700 hover:bg-rose-50"
-                  disabled={busy}
-                  onClick={() => changeStatus("annule")}
-                >
-                  <XCircle className="h-4 w-4" /> Annuler le RDV
-                </Button>
-              )}
-              {appointment.status === "annule" && (
-                <Button
-                  variant="outline"
-                  className="gap-2 border-sky-200 text-sky-700 hover:bg-sky-50"
-                  disabled={busy}
-                  onClick={() => changeStatus("a_venir")}
-                >
-                  <Clock className="h-4 w-4" /> Rétablir
-                </Button>
-              )}
-            </div>
+                {/* Status actions. "Passé" is not among them: it is what an
+                    untouched appointment becomes on its own once the time has
+                    gone, so offering it as a button would only let her set by
+                    hand something that is already true. */}
+                <div className="grid grid-cols-2 gap-2">
+                  {appointment.status !== "approuve" && (
+                    <Button
+                      variant="outline"
+                      className="gap-2 border-emerald-200 text-emerald-700 hover:bg-emerald-50"
+                      disabled={busy}
+                      onClick={() => changeStatus("approuve")}
+                    >
+                      <Check className="h-4 w-4" /> Confirmer
+                    </Button>
+                  )}
+                  {appointment.status !== "annule" && (
+                    <Button
+                      variant="outline"
+                      className="gap-2 border-rose-200 text-rose-700 hover:bg-rose-50"
+                      disabled={busy}
+                      onClick={() => changeStatus("annule")}
+                    >
+                      <XCircle className="h-4 w-4" /> Annuler le RDV
+                    </Button>
+                  )}
+                  {appointment.status !== "a_venir" && (
+                    <Button
+                      variant="outline"
+                      className="gap-2 border-sky-200 text-sky-700 hover:bg-sky-50"
+                      disabled={busy}
+                      onClick={() => changeStatus("a_venir")}
+                    >
+                      <Clock className="h-4 w-4" /> Rétablir « à venir »
+                    </Button>
+                  )}
+                </div>
 
-            <Button
-              variant="ghost"
-              className="w-full gap-2 text-rose-600 hover:bg-rose-50 hover:text-rose-700"
-              disabled={busy}
-              onClick={remove}
-            >
-              {busy ? <Loader2 className="h-4 w-4 animate-spin" /> : <Trash2 className="h-4 w-4" />}
-              Supprimer
-            </Button>
+                <Button
+                  variant="ghost"
+                  className="w-full gap-2 text-rose-600 hover:bg-rose-50 hover:text-rose-700"
+                  disabled={busy}
+                  onClick={remove}
+                >
+                  {busy ? (
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                  ) : (
+                    <Trash2 className="h-4 w-4" />
+                  )}
+                  Supprimer
+                </Button>
+              </>
+            )}
           </div>
         )}
       </DialogContent>

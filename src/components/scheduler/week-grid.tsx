@@ -22,7 +22,9 @@ import { cn } from "@/lib/utils";
 import {
   DAY_END_MIN,
   DAY_START_MIN,
+  effectiveStatus,
   fmtDateKey,
+  isPastDay,
   minutesToLabel,
   PX_PER_MIN,
   parseApptDate,
@@ -34,6 +36,9 @@ import {
 import type { Appointment } from "@/types";
 
 const GRID_HEIGHT = (DAY_END_MIN - DAY_START_MIN) * PX_PER_MIN;
+
+/** Width of the time gutter, shared by the header corner and the body column. */
+const GUTTER = 68;
 
 type Positioned = {
   appt: Appointment;
@@ -102,18 +107,22 @@ function layoutDay(appts: Appointment[]): Positioned[] {
 
 function AppointmentBlock({
   pos,
+  locked,
   onOpen,
   dragging,
 }: {
   pos: Positioned;
+  /** The day has gone: it can be opened and read, never moved. */
+  locked: boolean;
   onOpen: (a: Appointment) => void;
   dragging?: boolean;
 }) {
   const { attributes, listeners, setNodeRef, isDragging } = useDraggable({
     id: String(pos.appt.id),
     data: { appt: pos.appt },
+    disabled: locked,
   });
-  const meta = statusMeta(pos.appt.status);
+  const meta = statusMeta(effectiveStatus(pos.appt));
   const d = parseApptDate(pos.appt.appointment_datetime);
   const widthPct = 100 / pos.lanes;
 
@@ -126,26 +135,26 @@ function AppointmentBlock({
       style={{
         top: pos.top,
         height: pos.height,
-        left: `calc(${pos.lane * widthPct}% + 2px)`,
-        width: `calc(${widthPct}% - 4px)`,
+        left: `calc(${pos.lane * widthPct}% + 3px)`,
+        width: `calc(${widthPct}% - 6px)`,
       }}
       className={cn(
-        "absolute z-10 cursor-grab touch-none select-none overflow-hidden rounded-lg border py-1 pl-3 pr-2 text-left shadow-sm transition-colors active:cursor-grabbing",
+        "group/appt absolute z-10 touch-none select-none overflow-hidden rounded-lg border py-1 pl-3 pr-2 text-left shadow-sm transition-all duration-150 ease-spring",
+        locked
+          ? "cursor-pointer"
+          : "cursor-grab hover:-translate-y-px hover:shadow-card-hover active:cursor-grabbing",
         meta.block,
         (isDragging || dragging) && "opacity-40",
       )}
     >
-      <span
-        className={cn(
-          "absolute inset-y-0 left-0 w-1.5 rounded-l-lg",
-          meta.bar,
-        )}
-      />
-      <p className="truncate text-[11px] font-semibold leading-tight">
-        {format(d, "HH:mm")} · {pos.appt.patient_name || "RDV"}
+      <span className={cn("absolute inset-y-0 left-0 w-1 rounded-l-lg", meta.bar)} />
+      <p className="truncate text-[11px] font-semibold leading-tight tnum">
+        {format(d, "HH:mm")}
+        <span className="mx-1 opacity-40">·</span>
+        <span className="font-medium">{pos.appt.patient_name || "RDV"}</span>
       </p>
       {pos.height > 34 && pos.appt.notes ? (
-        <p className="truncate text-[10px] font-medium opacity-80">
+        <p className="truncate text-[10px] font-medium opacity-70">
           {pos.appt.notes}
         </p>
       ) : null}
@@ -156,26 +165,42 @@ function AppointmentBlock({
 function SlotCell({
   dateKey,
   minute,
+  closed,
   onCreate,
 }: {
   dateKey: string;
   minute: number;
+  /** The day has gone: nothing may be booked or dropped here. */
+  closed: boolean;
   onCreate: (dateKey: string, minute: number) => void;
 }) {
-  const { setNodeRef, isOver } = useDroppable({ id: `${dateKey}|${minute}` });
+  // Disabling the droppable is what actually blocks a drag: dnd-kit then never
+  // reports this cell as a target, so a drop over it resolves to nothing.
+  const { setNodeRef, isOver } = useDroppable({
+    id: `${dateKey}|${minute}`,
+    disabled: closed,
+  });
   const onHour = minute % 60 === 0;
   return (
     <div
       ref={setNodeRef}
-      onClick={() => onCreate(dateKey, minute)}
+      onClick={closed ? undefined : () => onCreate(dateKey, minute)}
       style={{ height: SLOT_PX }}
       className={cn(
-        "group relative border-b border-border/60",
-        onHour ? "border-border" : "border-dashed",
-        isOver ? "bg-primary/15 ring-2 ring-inset ring-primary" : "hover:bg-accent/40",
+        "group relative border-b transition-colors",
+        // Hours anchor the eye; half-hours only need to be felt, so they are
+        // drawn faint rather than dashed — dashes read as busy at this density.
+        onHour ? "border-border/70" : "border-border/30",
+        closed
+          ? "cursor-not-allowed"
+          : isOver
+            ? "bg-primary/10 ring-2 ring-inset ring-primary/60"
+            : "hover:bg-accent/50",
       )}
     >
-      <Plus className="absolute right-1 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-primary opacity-0 transition-opacity group-hover:opacity-60" />
+      {closed ? null : (
+        <Plus className="absolute right-1.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-primary opacity-0 transition-opacity group-hover:opacity-50" />
+      )}
     </div>
   );
 }
@@ -231,7 +256,7 @@ export function WeekGrid({
     const [dateKey, minStr] = String(over.id).split("|");
     const minute = Number(minStr);
     const day = days.find((d) => fmtDateKey(d) === dateKey);
-    if (!day) return;
+    if (!day || isPastDay(day)) return;
     // No-op if dropped on its current start.
     const cur = parseApptDate(appt.appointment_datetime);
     if (
@@ -243,6 +268,12 @@ export function WeekGrid({
     onReschedule(appt, day, minute);
   }
 
+  // Serves the day view as well as the week, so the column count comes from the
+  // days it was handed rather than from a 7 baked into a class name. One day
+  // gets the full width instead of a lonely column beside six empty ones.
+  const columns = `${GUTTER}px repeat(${days.length}, minmax(0, 1fr))`;
+  const minWidth = days.length === 1 ? 0 : 820;
+
   return (
     <DndContext
       sensors={sensors}
@@ -251,48 +282,78 @@ export function WeekGrid({
       onDragEnd={handleDragEnd}
       onDragCancel={() => setActiveId(null)}
     >
-      <div className="overflow-x-auto scrollbar-slim rounded-2xl border border-border bg-card shadow-sm">
-        <div className="min-w-[820px]">
+      <div className="overflow-x-auto scrollbar-slim rounded-2xl border border-border/70 bg-card shadow-card">
+        <div style={{ minWidth }}>
           {/* Header row: day names */}
-          <div className="sticky top-0 z-20 grid grid-cols-[64px_repeat(7,1fr)] border-b border-border bg-card/95 backdrop-blur">
-            <div className="border-r border-border" />
-            {days.map((day) => (
-              <div
-                key={fmtDateKey(day)}
-                className={cn(
-                  "flex flex-col items-center justify-center gap-0.5 border-r border-border py-2",
-                  isToday(day) && "bg-accent/50",
-                )}
-              >
-                <span className="text-[11px] uppercase tracking-wide text-muted-foreground">
-                  {format(day, "EEE", { locale: fr })}
-                </span>
-                <span
+          <div
+            style={{ gridTemplateColumns: columns }}
+            className="sticky top-0 z-30 grid border-b border-border bg-muted/50 backdrop-blur-sm"
+          >
+            {/* Corner. Sits above the gutter so neither scroll axis reveals a
+                gap where the two sticky edges meet. */}
+            <div className="sticky left-0 z-40 border-r border-border bg-muted/50 backdrop-blur-sm" />
+            {days.map((day) => {
+              const past = isPastDay(day);
+              const today = isToday(day);
+              return (
+                <div
+                  key={fmtDateKey(day)}
                   className={cn(
-                    "flex h-7 w-7 items-center justify-center rounded-full text-sm font-semibold",
-                    isToday(day)
-                      ? "bg-primary text-primary-foreground"
-                      : "text-foreground",
+                    "flex flex-col items-center justify-center gap-1 border-r border-border/70 py-2.5 last:border-r-0",
+                    today && "bg-accent/50",
+                    // Faded, not hidden: what was booked on Monday still has to
+                    // be readable on Wednesday, it just cannot be added to.
+                    past && !today && "bg-muted/30",
                   )}
                 >
-                  {format(day, "d")}
-                </span>
-              </div>
-            ))}
+                  <span
+                    className={cn(
+                      "text-[0.65rem] font-semibold uppercase tracking-widest",
+                      today ? "text-primary" : "text-muted-foreground/80",
+                    )}
+                  >
+                    {format(day, "EEE", { locale: fr })}
+                  </span>
+                  <span
+                    className={cn(
+                      "flex h-8 w-8 items-center justify-center rounded-full text-[0.95rem] font-semibold tnum transition-colors",
+                      today
+                        ? "bg-primary text-primary-foreground shadow-sm"
+                        : past
+                          ? "text-muted-foreground/60"
+                          : "text-foreground",
+                    )}
+                  >
+                    {format(day, "d")}
+                  </span>
+                </div>
+              );
+            })}
           </div>
 
           {/* Body: time gutter + day columns */}
-          <div className="grid grid-cols-[64px_repeat(7,1fr)]">
-            {/* Time gutter */}
-            <div className="border-r border-border">
-              {slots.map((m) => (
+          <div className="grid" style={{ gridTemplateColumns: columns }}>
+            {/* Time gutter. Sticky, so the hours stay readable while a week
+                scrolls sideways on a narrow screen. */}
+            <div className="sticky left-0 z-20 border-r border-border bg-muted/40">
+              {slots.map((m, i) => (
                 <div
                   key={m}
                   style={{ height: SLOT_PX }}
                   className="relative border-b border-transparent"
                 >
                   {m % 60 === 0 ? (
-                    <span className="absolute -top-2 right-2 text-[11px] tabular-nums text-muted-foreground">
+                    <span
+                      className={cn(
+                        "absolute right-2.5 text-[0.7rem] font-medium tabular-nums text-muted-foreground/80",
+                        // Every hour label straddles its gridline. The first one
+                        // has no row above it to straddle into: half of it would
+                        // land outside the grid, where the clipped container and
+                        // the sticky header between them swallow it. Sit it just
+                        // under the top edge instead.
+                        i === 0 ? "top-1" : "-top-2",
+                      )}
+                    >
                       {minutesToLabel(m)}
                     </span>
                   ) : null}
@@ -304,12 +365,15 @@ export function WeekGrid({
             {days.map((day) => {
               const key = fmtDateKey(day);
               const positioned = layoutDay(byDay.get(key) ?? []);
+              const closed = isPastDay(day);
+              const today = isToday(day);
               return (
                 <div
                   key={key}
                   className={cn(
-                    "relative border-r border-border",
-                    isToday(day) && "bg-accent/20",
+                    "relative border-r border-border/70 last:border-r-0",
+                    today && "bg-accent/20",
+                    closed && !today && "bg-muted/25",
                   )}
                   style={{ height: GRID_HEIGHT }}
                 >
@@ -319,6 +383,7 @@ export function WeekGrid({
                       key={m}
                       dateKey={key}
                       minute={m}
+                      closed={closed}
                       onCreate={(_dk, minute) => onCreateSlot(day, minute)}
                     />
                   ))}
@@ -328,6 +393,7 @@ export function WeekGrid({
                     <AppointmentBlock
                       key={pos.appt.id}
                       pos={pos}
+                      locked={closed}
                       onOpen={onOpenAppointment}
                     />
                   ))}
@@ -342,19 +408,22 @@ export function WeekGrid({
         {activeAppt ? (
           <div
             className={cn(
-              "relative overflow-hidden rounded-lg border py-1 pl-3 pr-2 text-left shadow-xl",
-              statusMeta(activeAppt.status).block,
+              "relative overflow-hidden rounded-lg border py-1 pl-3 pr-2 text-left shadow-modal",
+              statusMeta(effectiveStatus(activeAppt)).block,
             )}
           >
             <span
               className={cn(
-                "absolute inset-y-0 left-0 w-1.5 rounded-l-lg",
-                statusMeta(activeAppt.status).bar,
+                "absolute inset-y-0 left-0 w-1 rounded-l-lg",
+                statusMeta(effectiveStatus(activeAppt)).bar,
               )}
             />
-            <p className="text-[11px] font-semibold leading-tight">
-              {format(parseApptDate(activeAppt.appointment_datetime), "HH:mm")} ·{" "}
-              {activeAppt.patient_name || "RDV"}
+            <p className="text-[11px] font-semibold leading-tight tnum">
+              {format(parseApptDate(activeAppt.appointment_datetime), "HH:mm")}
+              <span className="mx-1 opacity-40">·</span>
+              <span className="font-medium">
+                {activeAppt.patient_name || "RDV"}
+              </span>
             </p>
           </div>
         ) : null}

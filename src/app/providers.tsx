@@ -9,12 +9,14 @@ export function Providers({ children }: { children: React.ReactNode }) {
       new QueryClient({
         defaultOptions: {
           queries: {
-            // Keep the secretary's view fresh against the shared doctor.db:
-            // refetch on focus and on a gentle interval so changes made in the
-            // doctor's desktop app appear here automatically.
+            // What she sees is only as fresh as two hops allow: his app syncs
+            // to Supabase every 15s, and this polls Supabase. Both halves have
+            // to be short or the slower one sets the pace — 20s here against a
+            // 60s sync was the reason a change could take over a minute to land.
             refetchOnWindowFocus: true,
-            refetchInterval: 20_000,
-            staleTime: 5_000,
+            refetchOnReconnect: true,
+            refetchInterval: 8_000,
+            staleTime: 3_000,
             retry: 1,
           },
         },

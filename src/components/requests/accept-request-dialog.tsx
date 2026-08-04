@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { format } from "date-fns";
+import { fr } from "date-fns/locale";
 import {
   AlertTriangle,
   Check,
@@ -32,7 +33,12 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { ApiError, acceptRequest, searchPatients } from "@/lib/client-api";
-import { DURATION_OPTIONS, minutesToLabel } from "@/lib/scheduler";
+import {
+  DURATION_OPTIONS,
+  isPastDay,
+  minutesToLabel,
+  todayKey,
+} from "@/lib/scheduler";
 import { avatarColor, initials } from "@/lib/avatar";
 import { cn } from "@/lib/utils";
 import type { AppointmentRequest } from "@/types";
@@ -83,7 +89,12 @@ export function AcceptRequestDialog({
     setDuration(30);
 
     const preferred = request.preferred_at ? new Date(request.preferred_at) : null;
-    setDate(format(preferred ?? new Date(), "yyyy-MM-dd"));
+
+    // A request can sit in the inbox until the day it asked for has gone by.
+    // Offering that day would only pre-fill a value the form then refuses, so
+    // fall back to today and say why below.
+    const stale = !!preferred && isPastDay(preferred);
+    setDate(format(stale ? new Date() : (preferred ?? new Date()), "yyyy-MM-dd"));
 
     // A slot picked off the public grid carries a real time; a loose "jour
     // souhaité" is stored at midnight, so fall back to the period instead.
@@ -118,9 +129,18 @@ export function AcceptRequestDialog({
   const submittedName =
     `${request.first_name} ${request.last_name}`.trim() || request.last_name;
 
+  const preferredAt = request.preferred_at ? new Date(request.preferred_at) : null;
+  const preferredPassed = !!preferredAt && isPastDay(preferredAt);
+
   async function submit() {
     if (!date) {
       toast.error("Choisissez une date.");
+      return;
+    }
+    // Both are "yyyy-MM-dd", so comparing them as strings is the same test as
+    // comparing the days and cannot be thrown off by a timezone.
+    if (date < todayKey()) {
+      toast.error("Impossible d'accepter une demande à une date déjà passée.");
       return;
     }
     setSaving(true);
@@ -266,12 +286,26 @@ export function AcceptRequestDialog({
             )}
           </div>
 
+          {/* The slot they asked for is gone. Say it plainly — she has to agree
+              a new one on the phone, and the date below is only a guess. */}
+          {preferredPassed ? (
+            <p className="flex items-start gap-2 rounded-xl border border-amber-200 bg-amber-50 px-3.5 py-2.5 text-sm text-amber-800">
+              <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" />
+              <span>
+                Le créneau demandé (
+                {format(preferredAt!, "d MMMM", { locale: fr })}) est déjà passé.
+                Convenez d&apos;une nouvelle date avec le patient.
+              </span>
+            </p>
+          ) : null}
+
           <div className="grid grid-cols-3 gap-3">
             <div className="space-y-1.5">
               <Label className="text-sm font-medium">Date</Label>
               <Input
                 type="date"
                 value={date}
+                min={todayKey()}
                 onChange={(e) => setDate(e.target.value)}
                 className="tnum"
               />

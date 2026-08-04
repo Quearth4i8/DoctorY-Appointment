@@ -39,7 +39,7 @@ export function AppNavbar({ staff }: { staff: Staff }) {
 
   return (
     <header className="sticky top-0 z-40 border-b bg-background/80 backdrop-blur-md">
-      <div className="mx-auto flex h-16 w-full max-w-[1600px] items-center gap-3 px-4 sm:px-6 lg:px-8">
+      <div className="flex h-16 w-full items-center gap-3 px-4 sm:px-6 lg:px-8">
         <Link
           href="/agenda"
           className="flex shrink-0 items-center gap-2.5 rounded-lg pr-2 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/60"
@@ -129,7 +129,7 @@ export function AppNavbar({ staff }: { staff: Staff }) {
               <DropdownMenuItem asChild>
                 <Link href="/parametres">
                   <Settings />
-                  Page publique
+                  Détails du médecin
                 </Link>
               </DropdownMenuItem>
 

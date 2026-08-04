@@ -156,7 +156,7 @@ export function RequestsInbox() {
                     <p className="truncate font-semibold text-foreground">{name}</p>
                     <p className="truncate text-sm text-muted-foreground">
                       {[
-                        r.gender === "M" ? "Homme" : r.gender === "F" ? "Femme" : "",
+                        r.gender === "M" || r.gender === "F" ? r.gender : "",
                         r.age != null ? `${r.age} ans` : "",
                       ]
                         .filter(Boolean)
