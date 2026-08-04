@@ -26,6 +26,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { turnstileEnabled } from "@/lib/turnstile-enabled";
 
 declare global {
   interface Window {
@@ -98,7 +99,7 @@ export function RequestForm({
 
   // Inlined at build time, so flipping this in the host's settings needs a
   // redeploy — same as every other env var there.
-  const gateOn = process.env.NEXT_PUBLIC_TURNSTILE_ENABLED !== "false";
+  const gateOn = turnstileEnabled();
   const siteKey = process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY ?? "";
 
   // The gate is on but has no key: the server will refuse every submission, so

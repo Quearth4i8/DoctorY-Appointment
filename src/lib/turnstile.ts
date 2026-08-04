@@ -1,5 +1,7 @@
 import "server-only";
 
+import { turnstileEnabled } from "./turnstile-enabled";
+
 const VERIFY_URL = "https://challenges.cloudflare.com/turnstile/v0/siteverify";
 
 /**
@@ -10,18 +12,6 @@ const VERIFY_URL = "https://challenges.cloudflare.com/turnstile/v0/siteverify";
  * `disabled` is distinct from both: nobody's problem, someone's decision.
  */
 export type TurnstileResult = "ok" | "failed" | "not_configured" | "disabled";
-
-/**
- * The gate is on unless it was switched off deliberately.
- *
- * Deciding from the *absence* of a secret would mean a deployment that forgot
- * one env var silently loses its bot protection and looks fine. An explicit
- * `false` cannot happen by accident, so a missing secret stays an error and
- * only this turns the check off.
- */
-export function turnstileEnabled(): boolean {
-  return process.env.NEXT_PUBLIC_TURNSTILE_ENABLED !== "false";
-}
 
 /**
  * Validates a Cloudflare Turnstile token server-side.
