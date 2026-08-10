@@ -100,10 +100,22 @@ export function SiteFooter() {
           </FooterColumn>
         </div>
 
-        <div className="mt-10 border-t border-slate-200/70 pt-6">
+        <div className="mt-10 flex items-center justify-between border-t border-slate-200/70 pt-6">
           <p className="text-xs text-slate-400">
             © {year} DoctorY. Tous droits réservés.
           </p>
+          {/* Deliberately not styled like a link: this is the operator's own
+              back office, not a page a visitor or a secretary has any reason
+              to open. It sits here, unlabeled beyond a single dot, instead of
+              beside "Espace secrétaire" where it would read as a second
+              front door. */}
+          <Link
+            href="/admin/login"
+            aria-label="Admin"
+            className="-m-2 p-2 text-base leading-none text-slate-400 transition-colors hover:text-slate-600"
+          >
+            •
+          </Link>
         </div>
       </div>
     </footer>
