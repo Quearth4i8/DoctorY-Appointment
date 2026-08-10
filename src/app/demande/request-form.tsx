@@ -61,6 +61,7 @@ const EMPTY = {
   phone: "",
   gender: "",
   age: "",
+  date_of_birth: "",
   numero_dossier: "",
 };
 
@@ -205,6 +206,44 @@ export function RequestForm({
     if (!verified && !form.last_name.trim()) {
       return setError("Le nom est obligatoire.");
     }
+    if (!verified && !form.date_of_birth) {
+      return setError("Renseignez votre date de naissance.");
+    }
+
+    let ageNum: number | null = null;
+    if (form.date_of_birth) {
+      const rawDob = form.date_of_birth.trim();
+      let dobString = "";
+
+      if (/^\d{2}\/\d{2}\/\d{4}$/.test(rawDob)) {
+        const [day, month, year] = rawDob.split("/");
+        dobString = `${year}-${month}-${day}`;
+      } else if (/^\d{4}-\d{2}-\d{2}$/.test(rawDob)) {
+        dobString = rawDob;
+      } else {
+        return setError("Date de naissance invalide.");
+      }
+
+      const birth = new Date(`${dobString}T00:00:00`);
+      if (Number.isNaN(birth.getTime())) {
+        return setError("Date de naissance invalide.");
+      }
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
+      if (birth > today) {
+        return setError("Date de naissance invalide.");
+      }
+      ageNum = today.getFullYear() - birth.getFullYear();
+      const monthDiff = today.getMonth() - birth.getMonth();
+      if (monthDiff < 0 || (monthDiff === 0 && today.getDate() < birth.getDate())) {
+        ageNum -= 1;
+      }
+      if (ageNum < 0 || ageNum > 130) {
+        return setError("Date de naissance invalide.");
+      }
+    } else if (form.age) {
+      ageNum = Number(form.age);
+    }
 
     setSending(true);
     try {
@@ -217,7 +256,8 @@ export function RequestForm({
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
             ...form,
-            age: form.age || null,
+            age: ageNum,
+            date_of_birth: form.date_of_birth || null,
             is_existing_patient: existing,
             numero_dossier: existing ? form.numero_dossier : "",
             preferred_at: at,
@@ -429,13 +469,15 @@ export function RequestForm({
         ) : null}
 
         {/* Only asked when the dossier could not vouch for the visitor. */}
-        {existing !== null && !verified ? (
+        {(existing === false || (existing === true && verified === false)) ? (
           <div className="grid gap-4 sm:grid-cols-2">
             <Field label="Nom" required>
               <input
                 value={form.last_name}
                 onChange={(e) => set("last_name", e.target.value)}
                 maxLength={80}
+                required
+                placeholder="Ex. Ben Ali"
                 className={INPUT}
               />
             </Field>
@@ -444,36 +486,37 @@ export function RequestForm({
                 value={form.first_name}
                 onChange={(e) => set("first_name", e.target.value)}
                 maxLength={80}
+                placeholder="Ex. Mourad"
                 className={INPUT}
               />
             </Field>
 
-            <div className="grid grid-cols-2 gap-4">
-              <Field label="Sexe">
-                <Select
-                  value={form.gender || NONE}
-                  onValueChange={(v) => set("gender", v === NONE ? "" : v)}
-                >
-                  <SelectTrigger className={TRIGGER}>
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value={NONE}>—</SelectItem>
-                    <SelectItem value="M">M</SelectItem>
-                    <SelectItem value="F">F</SelectItem>
-                  </SelectContent>
-                </Select>
-              </Field>
-              <Field label="Âge">
-                <input
-                  value={form.age}
-                  onChange={(e) => set("age", e.target.value.replace(/\D/g, ""))}
-                  inputMode="numeric"
-                  maxLength={3}
-                  className={INPUT}
-                />
-              </Field>
-            </div>
+            <Field label="Sexe">
+              <Select
+                value={form.gender || NONE}
+                onValueChange={(v) => set("gender", v === NONE ? "" : v)}
+              >
+                <SelectTrigger className={TRIGGER}>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value={NONE}>—</SelectItem>
+                  <SelectItem value="M">M</SelectItem>
+                  <SelectItem value="F">F</SelectItem>
+                </SelectContent>
+              </Select>
+            </Field>
+            <Field label="Date de naissance" required hint="Format jj/mm/aaaa">
+              <input
+                type="text"
+                placeholder="jj/mm/aaaa"
+                inputMode="numeric"
+                value={form.date_of_birth}
+                onChange={(e) => set("date_of_birth", e.target.value)}
+                required
+                className={INPUT}
+              />
+            </Field>
           </div>
         ) : null}
 

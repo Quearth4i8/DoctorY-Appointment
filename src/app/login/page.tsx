@@ -6,7 +6,7 @@ import { CalendarCheck, Shield, Users } from "lucide-react";
 import { LoginForm } from "./login-form";
 
 export const metadata: Metadata = {
-  title: "Espace secrétariat — DoctorY",
+  title: "Espace secrétaire — DoctorY",
 };
 
 /** Mirrors the desktop app's login, adapted to what the secretary actually does. */
