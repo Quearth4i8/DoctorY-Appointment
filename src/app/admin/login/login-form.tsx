@@ -42,10 +42,18 @@ export function AdminLoginForm() {
   }
 
   return (
-    <Card className="w-full max-w-sm border-border/70 shadow-card-hover">
-      <CardHeader className="items-center text-center">
-        <div className="mb-1 flex h-12 w-12 items-center justify-center rounded-full bg-accent">
-          <ShieldCheck className="h-6 w-6 text-accent-foreground" />
+    <Card className="relative w-full max-w-sm overflow-hidden border-border/70 shadow-modal">
+      {/* Same quiet dot mark the public login cards use, tying the two
+          together as one product without copying the light/teal skin. */}
+      <div className="pointer-events-none absolute right-6 top-6 grid grid-cols-4 gap-1.5 opacity-30">
+        {Array.from({ length: 12 }).map((_, i) => (
+          <span key={i} className="h-1 w-1 rounded-full bg-foreground/40" />
+        ))}
+      </div>
+
+      <CardHeader className="items-center pb-2 text-center">
+        <div className="mb-1 flex h-14 w-14 items-center justify-center rounded-2xl bg-primary/10 ring-1 ring-primary/20">
+          <ShieldCheck className="h-7 w-7 text-primary" />
         </div>
         <h1 className="text-lg font-bold tracking-tight text-foreground">
           Administration

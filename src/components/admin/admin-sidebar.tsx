@@ -1,16 +1,29 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import Image from "next/image";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { ChevronLeft, ChevronRight, KeyRound, ShieldCheck, X } from "lucide-react";
+import {
+  ChevronLeft,
+  ChevronRight,
+  Home,
+  KeyRound,
+  LayoutDashboard,
+  ShieldCheck,
+  Users,
+  X,
+} from "lucide-react";
 
 import { cn } from "@/lib/utils";
 
 const STORAGE_KEY = "doctory_admin_sidebar_collapsed";
 
-const LINKS = [{ href: "/admin", label: "Licences", icon: KeyRound }] as const;
+const LINKS = [
+  { href: "/admin", label: "Vue d'ensemble", icon: LayoutDashboard },
+  { href: "/admin/comptes", label: "Comptes", icon: Users },
+  { href: "/admin/licences", label: "Licences", icon: KeyRound },
+] as const;
 
 export function AdminSidebar({
   mobileOpen,
@@ -20,14 +33,20 @@ export function AdminSidebar({
   onMobileClose: () => void;
 }) {
   const pathname = usePathname();
-  const [collapsed, setCollapsed] = useState(() => {
-    if (typeof window === "undefined") return false;
+  // Always false on first render, matching the server (which has no
+  // localStorage) — reading the stored value here instead would make the
+  // client's first render disagree with the server-rendered HTML, which is
+  // a hydration error, not just a visual flash. Applying it in an effect
+  // defers the change to after hydration completes.
+  const [collapsed, setCollapsed] = useState(false);
+
+  useEffect(() => {
     try {
-      return localStorage.getItem(STORAGE_KEY) === "true";
+      setCollapsed(localStorage.getItem(STORAGE_KEY) === "true");
     } catch {
-      return false;
+      // Private browsing, quota exceeded — stays expanded for this session.
     }
-  });
+  }, []);
 
   const toggleCollapsed = () => {
     setCollapsed((prev) => {
@@ -110,7 +129,9 @@ export function AdminSidebar({
 
         <nav className={cn("flex flex-1 flex-col gap-1 overflow-y-auto py-3", collapsed ? "px-2" : "px-3")}>
           {LINKS.map(({ href, label, icon: Icon }) => {
-            const active = pathname === href || pathname.startsWith(`${href}/`);
+            // Exact match only — "/admin" is its own page now, not a shared
+            // prefix for "/admin/comptes" and "/admin/licences".
+            const active = pathname === href;
             return (
               <Link
                 key={href}

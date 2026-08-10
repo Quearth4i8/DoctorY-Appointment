@@ -82,3 +82,75 @@ export const releaseActivation = (key: string, id: string) =>
     `/api/admin/licenses/${encodeURIComponent(key)}/activations/${encodeURIComponent(id)}`,
     { method: "DELETE" },
   );
+
+// ─── Doctors & staff ───────────────────────────────────────────────────────
+
+export interface AdminDoctor {
+  id: string;
+  slug: string;
+  full_name: string;
+  title: string;
+  specialty: string;
+  city: string;
+  phone: string;
+  email: string;
+  is_published: boolean;
+  paired: boolean;
+  remote_seen_at: string | null;
+  staff_count: number;
+  created_at: string;
+}
+
+export interface AdminStaff {
+  user_id: string;
+  full_name: string;
+  email: string;
+  role: string;
+  doctor_id: string | null;
+  doctor_name: string | null;
+  created_at: string;
+}
+
+export const fetchDoctors = () => request<AdminDoctor[]>("/api/admin/doctors");
+
+export const fetchStaff = () => request<AdminStaff[]>("/api/admin/staff");
+
+export const reassignStaff = (userId: string, doctorId: string | null) =>
+  request<{ success: true }>(`/api/admin/staff/${encodeURIComponent(userId)}`, {
+    method: "PATCH",
+    body: JSON.stringify({ doctor_id: doctorId }),
+  });
+
+export const revokeStaff = (userId: string) =>
+  request<{ success: true }>(`/api/admin/staff/${encodeURIComponent(userId)}`, {
+    method: "DELETE",
+  });
+
+// ─── App overview ────────────────────────────────────────────────────────────
+
+export interface AdminAppStats {
+  doctors_total: number;
+  doctors_published: number;
+  staff_total: number;
+  staff_secretaries: number;
+  requests_total: number;
+  requests_pending: number;
+  requests_accepted: number;
+  requests_refused: number;
+  appointments_total: number;
+  appointments_upcoming: number;
+  patients_total: number;
+  patients_active: number;
+  license_keys_total: number;
+  license_machines_total: number;
+}
+
+export interface AdminRequestsByDay {
+  day: string;
+  count: number;
+}
+
+export const fetchAppStats = () => request<AdminAppStats>("/api/admin/stats");
+
+export const fetchRequestsOverTime = () =>
+  request<AdminRequestsByDay[]>("/api/admin/stats/requests-over-time");

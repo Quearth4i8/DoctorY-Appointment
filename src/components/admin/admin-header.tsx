@@ -1,12 +1,15 @@
 "use client";
 
+import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Menu } from "lucide-react";
+import { Home, Menu } from "lucide-react";
 
 import { LogoutButton } from "./logout-button";
 
 const TITLES: Record<string, string> = {
-  "/admin": "Licences",
+  "/admin": "Vue d'ensemble",
+  "/admin/comptes": "Comptes",
+  "/admin/licences": "Licences",
 };
 
 export function AdminHeader({ onMenuClick }: { onMenuClick: () => void }) {
@@ -26,7 +29,15 @@ export function AdminHeader({ onMenuClick }: { onMenuClick: () => void }) {
 
       <h1 className="truncate text-base font-semibold tracking-tight text-foreground">{title}</h1>
 
-      <div className="ml-auto">
+      <div className="ml-auto flex items-center gap-1">
+        <Link
+          href="/"
+          aria-label="Accueil du site"
+          title="Accueil du site"
+          className="flex h-9 w-9 items-center justify-center rounded-lg text-muted-foreground transition-colors hover:bg-secondary hover:text-foreground"
+        >
+          <Home className="h-[1.05rem] w-[1.05rem]" />
+        </Link>
         <LogoutButton />
       </div>
     </header>

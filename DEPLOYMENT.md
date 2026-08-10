@@ -119,6 +119,30 @@ than one doctor.
 Add the Vercel domain to the Turnstile site's hostnames, or every submission is
 refused.
 
+### Admin dashboard (/admin)
+
+Separate from everything above — a single-operator back office for issuing
+and managing license keys, gated by its own password rather than Supabase
+Auth. Needs its own four secrets in Vercel:
+
+| Variable | Value |
+| --- | --- |
+| `ADMIN_USERNAME` | your login, e.g. `quearth4i8` |
+| `ADMIN_PASSWORD` | your login password |
+| `ADMIN_SESSION_TOKEN` | any long random string — backs the admin cookie |
+| `ADMIN_API_SECRET` | any long random string — sent to Supabase's `admin_*` RPCs |
+
+Register the same API secret in Supabase once (SQL editor, never from the app):
+
+```sql
+select public.set_app_secret('admin_api_secret', '<same value as ADMIN_API_SECRET>');
+```
+
+Like `SERVER_API_SECRET`, this is deliberately not a service-role key — see
+`supabase/migrations/20260810010000_license_admin.sql`. None of these four
+belong in `.env.production` (that file is committed to git); set them
+directly in the Vercel project's environment variables.
+
 ### Going up before Turnstile exists
 
 Setting `NEXT_PUBLIC_TURNSTILE_ENABLED=false` skips the bot check entirely, and
