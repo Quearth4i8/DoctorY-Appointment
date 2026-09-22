@@ -17,7 +17,7 @@ export function AdminHeader({ onMenuClick }: { onMenuClick: () => void }) {
   const title = TITLES[pathname] ?? "Admin";
 
   return (
-    <header className="sticky top-0 z-20 flex h-16 shrink-0 items-center gap-3 border-b bg-background/80 px-4 backdrop-blur-md sm:px-6 lg:px-8">
+    <header className="sticky top-0 z-20 flex h-[3.625rem] shrink-0 items-center gap-3 border-b bg-card px-4 sm:px-6 lg:px-8">
       <button
         type="button"
         onClick={onMenuClick}
@@ -27,14 +27,19 @@ export function AdminHeader({ onMenuClick }: { onMenuClick: () => void }) {
         <Menu className="h-5 w-5" />
       </button>
 
-      <h1 className="truncate text-base font-semibold tracking-tight text-foreground">{title}</h1>
+      <div className="flex min-w-0 items-center gap-2.5">
+        <h1 className="truncate text-[1.05rem] font-bold tracking-tight">{title}</h1>
+        <span className="hidden rounded-full bg-clay/10 px-2 py-0.5 text-[0.65rem] font-extrabold text-clay sm:inline">
+          Back-office
+        </span>
+      </div>
 
       <div className="ml-auto flex items-center gap-1">
         <Link
           href="/"
           aria-label="Accueil du site"
           title="Accueil du site"
-          className="flex h-9 w-9 items-center justify-center rounded-lg text-muted-foreground transition-colors hover:bg-secondary hover:text-foreground"
+          className="flex h-9 w-9 items-center justify-center rounded-[0.625rem] border border-border text-muted-foreground transition-colors hover:bg-secondary hover:text-foreground"
         >
           <Home className="h-[1.05rem] w-[1.05rem]" />
         </Link>

@@ -1,7 +1,6 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import Image from "next/image";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import {
@@ -66,13 +65,13 @@ export function AdminSidebar({
         <div
           aria-hidden
           onClick={onMobileClose}
-          className="fixed inset-0 z-40 bg-foreground/25 backdrop-blur-sm md:hidden"
+          className="fixed inset-0 z-40 bg-rail-admin/50 backdrop-blur-sm md:hidden"
         />
       ) : null}
 
       <aside
         className={cn(
-          "fixed inset-y-0 left-0 z-50 flex w-64 flex-col border-r bg-card transition-all duration-200",
+          "fixed inset-y-0 left-0 z-50 flex w-[15rem] flex-col bg-rail-admin transition-all duration-200",
           "md:sticky md:top-0 md:z-0 md:h-screen md:translate-x-0",
           collapsed && "md:w-16",
           mobileOpen ? "translate-x-0" : "-translate-x-full md:translate-x-0",
@@ -83,36 +82,32 @@ export function AdminSidebar({
             type="button"
             onClick={toggleCollapsed}
             title="Développer"
-            className="hidden h-16 shrink-0 items-center justify-center border-b transition-colors hover:bg-secondary md:flex"
+            className="hidden h-16 shrink-0 items-center justify-center transition-colors hover:bg-rail-admin-raised md:flex"
           >
-            <Image
-              src="/logo-doctory.png"
-              alt=""
-              width={32}
-              height={32}
-              className="h-8 w-8 rounded-lg object-cover"
-            />
+            <span className="flex h-8 w-8 items-center justify-center rounded-[0.625rem] bg-clay text-white">
+              <ShieldCheck className="h-[1.05rem] w-[1.05rem]" />
+            </span>
           </button>
         ) : (
-          <div className="flex h-16 shrink-0 items-center justify-between border-b px-4">
-            <div className="flex min-w-0 items-center gap-2">
-              <Image
-                src="/logo-doctory.png"
-                alt=""
-                width={32}
-                height={32}
-                className="h-8 w-8 shrink-0 rounded-lg object-cover"
-              />
-              <div className="flex min-w-0 items-center gap-1.5 text-sm font-semibold tracking-tight text-foreground">
-                <ShieldCheck className="h-4 w-4 shrink-0 text-primary" />
-                <span className="truncate">Admin</span>
-              </div>
-            </div>
+          <div className="flex h-16 shrink-0 items-center gap-2.5 px-3.5">
+            <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-[0.625rem] bg-clay text-white">
+              <ShieldCheck className="h-[1.05rem] w-[1.05rem]" />
+            </span>
+            <span className="flex min-w-0 flex-1 flex-col">
+              <span className="truncate text-sm font-bold tracking-tight text-rail-foreground">
+                DoctorY
+              </span>
+              {/* Names the surface, not the person: the point is to know you
+                  are outside any single cabinet. */}
+              <span className="truncate text-[0.65rem] font-semibold text-clay">
+                Back-office
+              </span>
+            </span>
             <button
               type="button"
               onClick={toggleCollapsed}
               title="Réduire"
-              className="hidden h-7 w-7 shrink-0 items-center justify-center rounded-md text-muted-foreground/60 transition-colors hover:bg-secondary hover:text-foreground md:flex"
+              className="hidden h-7 w-7 shrink-0 items-center justify-center rounded-md text-rail-admin-muted transition-colors hover:bg-rail-admin-raised hover:text-rail-foreground md:flex"
             >
               <ChevronLeft className="h-3.5 w-3.5" />
             </button>
@@ -120,14 +115,14 @@ export function AdminSidebar({
               type="button"
               onClick={onMobileClose}
               aria-label="Fermer le menu"
-              className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg text-muted-foreground hover:bg-secondary md:hidden"
+              className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg text-rail-admin-muted hover:bg-rail-admin-raised md:hidden"
             >
               <X className="h-4 w-4" />
             </button>
           </div>
         )}
 
-        <nav className={cn("flex flex-1 flex-col gap-1 overflow-y-auto py-3", collapsed ? "px-2" : "px-3")}>
+        <nav className={cn("flex flex-1 flex-col gap-0.5 overflow-y-auto py-2", collapsed ? "px-2" : "px-3")}>
           {LINKS.map(({ href, label, icon: Icon }) => {
             // Exact match only — "/admin" is its own page now, not a shared
             // prefix for "/admin/comptes" and "/admin/licences".
@@ -140,11 +135,11 @@ export function AdminSidebar({
                 title={collapsed ? label : undefined}
                 aria-current={active ? "page" : undefined}
                 className={cn(
-                  "flex h-10 items-center gap-2.5 rounded-lg text-sm font-medium transition-colors",
-                  collapsed ? "justify-center px-0" : "px-3",
+                  "flex h-10 items-center gap-2.5 rounded-[0.625rem] text-sm transition-colors",
+                  collapsed ? "justify-center px-0" : "px-2.5",
                   active
-                    ? "bg-accent text-accent-foreground"
-                    : "text-muted-foreground hover:bg-secondary hover:text-foreground",
+                    ? "bg-clay font-bold text-white"
+                    : "font-medium text-rail-admin-muted hover:bg-rail-admin-raised hover:text-rail-foreground",
                 )}
               >
                 <Icon className="h-[1.05rem] w-[1.05rem] shrink-0" />
@@ -159,11 +154,18 @@ export function AdminSidebar({
             type="button"
             onClick={toggleCollapsed}
             title="Développer"
-            className="hidden h-12 shrink-0 items-center justify-center border-t text-muted-foreground/60 transition-colors hover:bg-secondary hover:text-foreground md:flex"
+            className="hidden h-12 shrink-0 items-center justify-center border-t border-rail-admin-border text-rail-admin-muted transition-colors hover:bg-rail-admin-raised hover:text-rail-foreground md:flex"
           >
             <ChevronRight className="h-3.5 w-3.5" />
           </button>
-        ) : null}
+        ) : (
+          <div className="shrink-0 px-3 pb-3">
+            <p className="rounded-[0.625rem] border border-rail-admin-border px-3 py-2.5 text-[0.7rem] leading-relaxed text-rail-admin-muted">
+              Console réservée à l&apos;exploitant. Ni les cabinets ni les
+              secrétariats n&apos;y ont accès.
+            </p>
+          </div>
+        )}
       </aside>
     </>
   );

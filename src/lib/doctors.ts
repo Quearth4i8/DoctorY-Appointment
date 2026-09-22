@@ -60,6 +60,24 @@ export async function getDoctorBySlug(slug: string): Promise<Doctor | null> {
 }
 
 /**
+ * One profile by id.
+ *
+ * The annuaire addresses establishments by `providers.slug`, but requests are
+ * still submitted against a doctor slug. `providers.legacy_doctor_id` is the
+ * honest link between the two — resolving through it rather than assuming the
+ * two slugs match keeps working if an establishment is ever renamed.
+ */
+export async function getDoctorById(id: string): Promise<Doctor | null> {
+  const supabase = createClient();
+  const { data } = await supabase
+    .from("doctors")
+    .select(FIELDS)
+    .eq("id", id)
+    .maybeSingle();
+  return data ? normalise(data as unknown as Record<string, unknown>) : null;
+}
+
+/**
  * The profile a staff member manages, draft included — for the settings page.
  *
  * Bound staff get their own doctor; unbound staff (the single-practice case)

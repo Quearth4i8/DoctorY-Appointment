@@ -288,7 +288,7 @@ export function AppointmentDetailsDialog({
                   {appointment.status !== "approuve" && (
                     <Button
                       variant="outline"
-                      className="gap-2 border-emerald-200 text-emerald-700 hover:bg-emerald-50"
+                      className="gap-2 border-ok/25 text-ok-foreground hover:bg-ok-soft"
                       disabled={busy}
                       onClick={() => changeStatus("approuve")}
                     >
@@ -298,7 +298,7 @@ export function AppointmentDetailsDialog({
                   {appointment.status !== "annule" && (
                     <Button
                       variant="outline"
-                      className="gap-2 border-rose-200 text-rose-700 hover:bg-rose-50"
+                      className="gap-2 border-danger/25 text-danger-foreground hover:bg-danger-soft"
                       disabled={busy}
                       onClick={() => changeStatus("annule")}
                     >
@@ -308,7 +308,7 @@ export function AppointmentDetailsDialog({
                   {appointment.status !== "a_venir" && (
                     <Button
                       variant="outline"
-                      className="gap-2 border-sky-200 text-sky-700 hover:bg-sky-50"
+                      className="gap-2 border-info/25 text-info-foreground hover:bg-info-soft"
                       disabled={busy}
                       onClick={() => changeStatus("a_venir")}
                     >
@@ -319,7 +319,7 @@ export function AppointmentDetailsDialog({
 
                 <Button
                   variant="ghost"
-                  className="w-full gap-2 text-rose-600 hover:bg-rose-50 hover:text-rose-700"
+                  className="w-full gap-2 text-danger-foreground hover:bg-danger-soft hover:text-danger-foreground"
                   disabled={busy}
                   onClick={remove}
                 >

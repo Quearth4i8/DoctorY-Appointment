@@ -24,6 +24,15 @@ const TITLES: Record<string, string> = {
   "/parametres": "Détails du médecin",
 };
 
+/** Today, spelled out — the console is a day-shaped tool. */
+function today(): string {
+  return new Date().toLocaleDateString("fr-FR", {
+    weekday: "long",
+    day: "numeric",
+    month: "long",
+  });
+}
+
 export function AppHeader({ staff, onMenuClick }: { staff: Staff; onMenuClick: () => void }) {
   const pathname = usePathname();
   const title = TITLES[pathname] ?? "";
@@ -31,7 +40,7 @@ export function AppHeader({ staff, onMenuClick }: { staff: Staff; onMenuClick: (
   const [first = "", ...rest] = name.split(" ");
 
   return (
-    <header className="sticky top-0 z-20 flex h-16 shrink-0 items-center gap-3 border-b bg-background/80 px-4 backdrop-blur-md sm:px-6 lg:px-8">
+    <header className="sticky top-0 z-20 flex h-[3.625rem] shrink-0 items-center gap-3 border-b bg-card px-4 sm:px-6 lg:px-8">
       <button
         type="button"
         onClick={onMenuClick}
@@ -41,23 +50,28 @@ export function AppHeader({ staff, onMenuClick }: { staff: Staff; onMenuClick: (
         <Menu className="h-5 w-5" />
       </button>
 
-      <h1 className="truncate text-base font-semibold tracking-tight text-foreground">{title}</h1>
+      <div className="flex min-w-0 items-baseline gap-2.5">
+        <h1 className="truncate text-[1.05rem] font-bold tracking-tight">{title}</h1>
+        <span className="hidden truncate font-mono text-[0.78rem] capitalize text-muted-foreground tnum sm:block">
+          {today()}
+        </span>
+      </div>
 
       <div className="ml-auto flex items-center gap-2">
         <Link
           href="/"
           aria-label="Accueil du site"
           title="Accueil du site"
-          className="flex h-10 w-10 items-center justify-center rounded-lg text-muted-foreground transition-colors hover:bg-secondary hover:text-foreground"
+          className="flex h-9 w-9 items-center justify-center rounded-[0.625rem] border border-border text-muted-foreground transition-colors hover:bg-secondary hover:text-foreground"
         >
           <Home className="h-[1.05rem] w-[1.05rem]" />
         </Link>
 
         <DropdownMenu>
-          <DropdownMenuTrigger className="group flex h-10 items-center gap-2 rounded-lg pl-1 pr-2 transition-colors hover:bg-secondary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/60 data-[state=open]:bg-secondary">
+          <DropdownMenuTrigger className="group flex h-10 items-center gap-2 rounded-[0.625rem] pl-1 pr-2 transition-colors hover:bg-secondary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/60 data-[state=open]:bg-secondary">
             <span
               className={cn(
-                "flex h-8 w-8 items-center justify-center rounded-lg text-xs font-semibold",
+                "flex h-8 w-8 items-center justify-center rounded-[0.625rem] text-xs font-bold",
                 avatarColor(staff.user_id),
               )}
             >

@@ -25,7 +25,7 @@ function statusBadge(license: LicenseKey) {
   }
   if (license.expires_at && new Date(license.expires_at) < new Date()) {
     return (
-      <Badge variant="outline" className="border-amber-300 text-amber-700 dark:text-amber-400">
+      <Badge variant="outline" className="border-warn/40 text-warn-foreground dark:text-warn">
         Expirée
       </Badge>
     );

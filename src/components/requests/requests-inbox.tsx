@@ -36,12 +36,17 @@ const TABS: { value: RequestStatus | "toutes"; label: string }[] = [
 ];
 
 const STATUS_BADGE: Record<RequestStatus, { label: string; className: string }> = {
-  en_attente: { label: "En attente", className: "bg-amber-100 text-amber-700" },
-  accepte: { label: "Acceptée", className: "bg-emerald-100 text-emerald-700" },
-  refuse: { label: "Refusée", className: "bg-rose-100 text-rose-700" },
+  en_attente: { label: "En attente", className: "bg-warn-soft text-warn-foreground" },
+  accepte: { label: "Acceptée", className: "bg-ok-soft text-ok-foreground" },
+  refuse: { label: "Refusée", className: "bg-danger-soft text-danger-foreground" },
 };
 
-export function RequestsInbox() {
+export function RequestsInbox({
+  initialPending = null,
+}: {
+  /** The "en attente" tab as the server already fetched it. */
+  initialPending?: AppointmentRequest[] | null;
+}) {
   const qc = useQueryClient();
   const [tab, setTab] = useState<RequestStatus | "toutes">("en_attente");
   const [accepting, setAccepting] = useState<AppointmentRequest | null>(null);
@@ -52,6 +57,9 @@ export function RequestsInbox() {
     queryKey: ["requests", tab],
     queryFn: () => fetchRequests(tab),
     refetchInterval: 30_000,
+    // Only seeds the tab it actually belongs to; switching tabs fetches.
+    initialData:
+      tab === "en_attente" && initialPending ? initialPending : undefined,
   });
 
   function invalidate() {
@@ -84,17 +92,17 @@ export function RequestsInbox() {
           </p>
         </div>
 
-        <div className="flex items-center rounded-lg border bg-card p-0.5 shadow-card">
+        <div className="flex items-center rounded-[0.625rem] bg-muted p-0.5">
           {TABS.map((t) => (
             <button
               key={t.value}
               type="button"
               onClick={() => setTab(t.value)}
               className={cn(
-                "h-9 rounded-md px-3.5 text-sm font-medium transition-colors",
+                "h-9 rounded-md px-3.5 text-sm transition-colors",
                 tab === t.value
-                  ? "bg-accent text-accent-foreground"
-                  : "text-muted-foreground hover:bg-secondary hover:text-foreground",
+                  ? "bg-card font-bold text-foreground shadow-card"
+                  : "font-medium text-muted-foreground hover:text-foreground",
               )}
             >
               {t.label}
@@ -200,12 +208,12 @@ export function RequestsInbox() {
                         {/* Verified = the dossier and phone matched a real
                             record, so the identity is not just self-declared. */}
                         {r.dossier_verified ? (
-                          <span className="inline-flex items-center gap-1 rounded-full bg-emerald-100 px-2 py-0.5 text-xs font-medium text-emerald-700">
+                          <span className="inline-flex items-center gap-1 rounded-full bg-ok-soft px-2 py-0.5 text-xs font-medium text-ok-foreground">
                             <ShieldCheck className="h-3 w-3" />
                             vérifié
                           </span>
                         ) : (
-                          <span className="inline-flex items-center gap-1 rounded-full bg-amber-100 px-2 py-0.5 text-xs font-medium text-amber-700">
+                          <span className="inline-flex items-center gap-1 rounded-full bg-warn-soft px-2 py-0.5 text-xs font-medium text-warn-foreground">
                             non vérifié
                           </span>
                         )}

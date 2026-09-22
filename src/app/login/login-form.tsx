@@ -54,7 +54,7 @@ export function LoginForm() {
     setLoading(true);
 
     const supabase = createClient();
-    const { error: authError } = await supabase.auth.signInWithPassword({
+    const { data: auth, error: authError } = await supabase.auth.signInWithPassword({
       email: email.trim(),
       password,
     });
@@ -64,10 +64,51 @@ export function LoginForm() {
       setError(
         authError.message === "Invalid login credentials"
           ? "Email ou mot de passe incorrect."
-          : "Connexion impossible. Réessayez.",
+          : authError.message === "Email not confirmed"
+            ? "Confirmez d'abord votre email : le lien vous a été envoyé à l'inscription."
+            : "Connexion impossible. Réessayez.",
       );
       setLoading(false);
       return;
+    }
+
+    /*
+     * Finish a liaison that signup could not.
+     *
+     * With email confirmation enabled, `signUp` returns no session, so the
+     * signup form never reaches `claim_staff_with_key`. Nothing else called it
+     * either — so a secretary who confirmed her email ended up authenticated
+     * but not staff, and every page answered "Accès non autorisé" with no way
+     * forward. The key rides along on the user until it is spent.
+     */
+    const meta = auth.user?.user_metadata as
+      | { pairing_key?: string | null; full_name?: string | null }
+      | undefined;
+
+    if (meta?.pairing_key) {
+      const { error: claimError } = await supabase.rpc("claim_staff_with_key", {
+        p_key: meta.pairing_key,
+        p_full_name: meta.full_name ?? "",
+      });
+
+      const raised = claimError
+        ? `${claimError.message} ${claimError.details ?? ""}`
+        : "";
+
+      // Already attached is the desired end state, not a failure — it just
+      // means the claim ran on an earlier login.
+      if (!claimError || raised.includes("ALREADY_STAFF")) {
+        // Spend the key so this runs once rather than on every sign-in.
+        await supabase.auth.updateUser({ data: { pairing_key: null } });
+      } else if (raised.includes("INVALID_KEY")) {
+        setError(
+          "Votre clé de liaison n'est plus valide. Demandez-en une nouvelle à votre médecin.",
+        );
+        setLoading(false);
+        return;
+      }
+      // Any other failure falls through: the session is valid, and the
+      // access-denied screen is a better place to land than the login form.
     }
 
     // Server Components read the session from cookies, so refresh before moving.

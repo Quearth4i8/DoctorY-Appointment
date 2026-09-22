@@ -271,6 +271,45 @@ function toAppointment(r: AppointmentRow): Appointment {
   };
 }
 
+const REQUEST_FIELDS =
+  "id, created_at, last_name, first_name, phone, gender, age, reason, " +
+  "is_existing_patient, numero_dossier, dossier_verified, " +
+  "preferred_at, preferred_period, status, reviewed_at, scheduled_at, " +
+  "duration_minutes, staff_notes, patient_id, appointment_id";
+
+/**
+ * The review inbox.
+ *
+ * Lives here rather than inline in the route so the page can render the first
+ * page of it on the server. Two copies of this query would be two chances for
+ * the scoping below to drift apart, which is the last filter you want drifting.
+ *
+ * Scoping is enforced by RLS (can_access_request); repeating it here keeps the
+ * query honest about what it is asking for rather than relying on the database
+ * to silently drop rows. Unattributed requests are NOT included: `doctor_id is
+ * null` used to be an escape hatch that showed one cabinet's requests to
+ * another cabinet's secretary.
+ */
+export async function listRequests(
+  doctorId: string,
+  status: string | null,
+): Promise<unknown[]> {
+  let query = createClient()
+    .from("appointment_requests")
+    .select(REQUEST_FIELDS)
+    .eq("doctor_id", doctorId)
+    .order("created_at", { ascending: false })
+    .limit(200);
+
+  if (status && status !== "toutes") query = query.eq("status", status);
+
+  const { data, error } = await query;
+  if (error) {
+    throw new FrontDeskError(500, "Impossible de charger les demandes.");
+  }
+  return data ?? [];
+}
+
 export async function listAppointments(
   doctorId: string,
   from: string,

@@ -15,10 +15,30 @@ const PUBLIC_PREFIXES = [
   "/login", // secretary sign-in
   "/inscription", // secretary account creation (needs the doctor's key)
   "/demande", // public "request an appointment" form
-  "/medecins", // public doctor profiles
+  "/medecins", // public doctor profiles (legacy, backed by `doctors`)
+  "/recherche", // annuaire search results
+  "/etablissement", // annuaire profile — every kind of establishment
+  "/gardes", // pharmacies on duty
+  "/signaler", // report a wrong listing
+  "/confidentialite", // privacy page
   "/api/public", // endpoints backing the public pages
   "/api/sync", // doctor's desktop app, authenticated by DESKTOP_SYNC_TOKEN
   "/auth", // sign-out and auth callbacks
+];
+
+/**
+ * Public at EXACTLY these paths — nothing nested under them.
+ *
+ * `/pro` is the reason this list exists. Its two marketing pages are public,
+ * but the professional console that will live under the same prefix must not
+ * be: putting "/pro" in PUBLIC_PREFIXES would open every future
+ * /pro/<anything> the day it is added, silently and without anyone touching
+ * this file. Listing the exact paths instead means a new page under /pro is
+ * private until someone deliberately says otherwise.
+ */
+const PUBLIC_EXACT = [
+  "/pro", // professional landing
+  "/pro/revendiquer", // listing intake (registration + claim)
 ];
 
 /** Staff routes. Everything not public lands here; listed for readability. */
@@ -36,6 +56,7 @@ export const STAFF_HOME = "/agenda";
  */
 function isPublic(pathname: string): boolean {
   if (pathname === "/") return true; // public landing page
+  if (PUBLIC_EXACT.includes(pathname)) return true;
   return PUBLIC_PREFIXES.some(
     (p) => pathname === p || pathname.startsWith(`${p}/`),
   );
@@ -50,6 +71,23 @@ function isPublic(pathname: string): boolean {
  * the refreshed cookies onto a redirect.
  */
 export async function updateSession(request: NextRequest) {
+  const { pathname } = request.nextUrl;
+
+  /*
+   * Public pages need no session, so they must not pay for one.
+   *
+   * `getUser()` revalidates the JWT with Supabase — a real network round trip
+   * whenever a cookie is present. It was running BEFORE the public check, so
+   * every visit to the annuaire, a profile or the gardes page cost one for any
+   * signed-in visitor, enforcing nothing.
+   *
+   * `/login` is the exception: it is public, but a signed-in user landing
+   * there is redirected to the agenda, and that decision needs the user.
+   */
+  if (isPublic(pathname) && pathname !== "/login") {
+    return NextResponse.next({ request });
+  }
+
   let response = NextResponse.next({ request });
 
   const supabase = createServerClient(supabaseUrl(), supabaseAnonKey(), {
@@ -73,8 +111,6 @@ export async function updateSession(request: NextRequest) {
   const {
     data: { user },
   } = await supabase.auth.getUser();
-
-  const { pathname } = request.nextUrl;
 
   if (!user && !isPublic(pathname)) {
     // API calls get a 401 rather than an HTML redirect they cannot follow.

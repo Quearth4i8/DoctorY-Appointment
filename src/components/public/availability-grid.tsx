@@ -32,7 +32,18 @@ const VIEW_LABELS: Record<CalendarView, string> = {
 /** Monday-first weekday initials for the month grid header. */
 const WEEKDAYS = ["Lun", "Mar", "Mer", "Jeu", "Ven", "Sam", "Dim"];
 
-export function AvailabilityGrid({ slug }: { slug: string }) {
+/**
+ * `doctor` addresses a `doctors` row (the legacy /medecins pages); `provider`
+ * addresses a `providers` row (the annuaire profile). Both end up reading the
+ * same agenda — the difference is only which handle the caller holds.
+ */
+export function AvailabilityGrid({
+  slug,
+  source = "doctor",
+}: {
+  slug: string;
+  source?: "doctor" | "provider";
+}) {
   const router = useRouter();
   const [view, setView] = useState<CalendarView>("week");
   const [anchor, setAnchor] = useState(() => new Date());
@@ -41,11 +52,15 @@ export function AvailabilityGrid({ slug }: { slug: string }) {
   const dateParam = dateKey(days[0]);
 
   const { data, isLoading, isError } = useQuery<Payload>({
-    queryKey: ["availability", slug, view, dateParam],
+    queryKey: ["availability", source, slug, view, dateParam],
     queryFn: async () => {
       const res = await fetch(
-        `/api/public/availability?slug=${encodeURIComponent(slug)}&view=${view}&date=${dateParam}`,
+        `/api/public/availability?${source}=${encodeURIComponent(slug)}&view=${view}&date=${dateParam}`,
       );
+      // 409 means "this establishment publishes no agenda", which the grid
+      // renders as an empty state. Throwing here would turn a normal answer
+      // into a red error box.
+      if (res.status === 409) return res.json();
       if (!res.ok) throw new Error("failed");
       return res.json();
     },
@@ -95,7 +110,7 @@ export function AvailabilityGrid({ slug }: { slug: string }) {
 
   function book(at: string) {
     router.push(
-      `/demande?medecin=${encodeURIComponent(slug)}&at=${encodeURIComponent(at)}`,
+      `/demande?${source === "provider" ? "etablissement" : "medecin"}=${encodeURIComponent(slug)}&at=${encodeURIComponent(at)}`,
     );
   }
 
@@ -154,7 +169,7 @@ export function AvailabilityGrid({ slug }: { slug: string }) {
       </div>
 
       {data?.unavailable || isError ? (
-        <div className="flex items-start gap-3 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">
+        <div className="flex items-start gap-3 rounded-xl border border-warn/25 bg-warn-soft px-4 py-3 text-sm text-warn-foreground">
           <CalendarOff className="mt-0.5 h-4 w-4 shrink-0" />
           <span>
             {data?.error ??
@@ -287,7 +302,7 @@ function TimeGrid({
                       <button
                         type="button"
                         onClick={() => onBook(slot.at)}
-                        className="h-8 w-full rounded-md border border-emerald-200 bg-emerald-50 text-xs font-semibold tabular-nums text-emerald-700 transition-colors hover:border-emerald-600 hover:bg-emerald-600 hover:text-white"
+                        className="h-8 w-full rounded-md border border-ok/25 bg-ok-soft text-xs font-semibold tabular-nums text-ok-foreground transition-colors hover:border-emerald-600 hover:bg-emerald-600 hover:text-white"
                       >
                         {time}
                       </button>
@@ -362,7 +377,7 @@ function MonthGrid({
               className={[
                 "flex min-h-[76px] flex-col items-center justify-center gap-1 border-b border-r border-slate-100 p-2 transition-colors",
                 free > 0
-                  ? "hover:bg-emerald-50"
+                  ? "hover:bg-ok-soft"
                   : "cursor-not-allowed bg-slate-50/40",
                 isToday ? "ring-1 ring-inset ring-teal-500" : "",
               ].join(" ")}
@@ -377,7 +392,7 @@ function MonthGrid({
               </span>
 
               {free > 0 ? (
-                <span className="rounded-full bg-emerald-100 px-2 py-0.5 text-[0.7rem] font-semibold tabular-nums text-emerald-700">
+                <span className="rounded-full bg-ok-soft px-2 py-0.5 text-[0.7rem] font-semibold tabular-nums text-ok-foreground">
                   {free} libre{free > 1 ? "s" : ""}
                 </span>
               ) : (
@@ -395,7 +410,7 @@ function Legend() {
   return (
     <div className="flex flex-wrap items-center gap-x-5 gap-y-2 text-xs text-slate-500">
       <span className="flex items-center gap-1.5">
-        <span className="h-3 w-5 rounded border border-emerald-200 bg-emerald-50" />
+        <span className="h-3 w-5 rounded border border-ok/25 bg-ok-soft" />
         Libre
       </span>
       <span className="flex items-center gap-1.5">

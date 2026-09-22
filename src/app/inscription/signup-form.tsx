@@ -39,6 +39,47 @@ function IconField({
   );
 }
 
+/**
+ * Supabase answers in English and in error codes; this says what to DO.
+ *
+ * The rate limit is the one that matters. It arrives after several attempts,
+ * and the old catch-all told the person to try again — which is exactly what
+ * spends the remaining quota and keeps them locked out longer.
+ */
+function signUpMessage(err: {
+  message: string;
+  code?: string | number;
+  status?: number;
+}): string {
+  // Coerced on purpose: the JS client hands back `code` as the string error
+  // code, while the raw endpoint puts the HTTP status there as a number.
+  // Calling .includes() on a number is a TypeError that would swallow the
+  // very message this function exists to show.
+  const code = String(err.code ?? "");
+  const text = err.message.toLowerCase();
+
+  if (code.includes("over_email_send_rate_limit") || err.status === 429) {
+    return "Trop de tentatives d'inscription. L'envoi d'emails est temporairement bloqué — réessayez dans une heure.";
+  }
+  if (code === "user_already_exists" || text.includes("already")) {
+    return "Un compte existe déjà avec cet email.";
+  }
+  if (code === "weak_password" || text.includes("password")) {
+    return "Mot de passe trop faible. Utilisez au moins 6 caractères.";
+  }
+  if (code === "email_address_invalid" || text.includes("invalid email")) {
+    return "Adresse email invalide.";
+  }
+  if (code === "signup_disabled" || text.includes("signups not allowed")) {
+    return "Les inscriptions sont désactivées sur ce serveur.";
+  }
+  if (text.includes("error sending") || text.includes("smtp")) {
+    return "L'email de confirmation n'a pas pu être envoyé. Prévenez votre médecin.";
+  }
+  // Better a sentence nobody wrote than a dead end nobody can debug.
+  return `Création impossible : ${err.message}`;
+}
+
 export function SignupForm() {
   const router = useRouter();
 
@@ -48,11 +89,13 @@ export function SignupForm() {
   const [key, setKey] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [notice, setNotice] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
 
   async function onSubmit(e: React.FormEvent) {
     e.preventDefault();
     setError(null);
+    setNotice(null);
 
     if (!fullName.trim()) return setError("Entrez votre nom.");
     if (password.length < 6) {
@@ -75,27 +118,39 @@ export function SignupForm() {
       );
     }
 
+    /*
+     * The pairing key travels with the account.
+     *
+     * When email confirmation is on there is no session here, so the claim
+     * below cannot run and the key would be lost between this form and the
+     * confirmation link. Carrying it on the user lets the first successful
+     * login finish the job — see login-form.tsx.
+     *
+     * It is not a secret being leaked: the person just typed it, and
+     * `claim_staff_with_key` validates it server-side, so a forged value in
+     * metadata buys nothing.
+     */
     const { error: signUpError } = await supabase.auth.signUp({
       email: email.trim(),
       password,
+      options: { data: { pairing_key: key.trim(), full_name: fullName.trim() } },
     });
 
     if (signUpError) {
       setLoading(false);
-      return setError(
-        signUpError.message.toLowerCase().includes("already")
-          ? "Un compte existe déjà avec cet email."
-          : "Création impossible. Réessayez.",
-      );
+      return setError(signUpMessage(signUpError));
     }
 
     // signUp signs the user in when email confirmation is off. If it is on,
-    // there is no session yet and the claim has to wait for the first login.
+    // there is no session yet and the claim waits for the first login.
     const { data: session } = await supabase.auth.getSession();
     if (!session.session) {
       setLoading(false);
-      return setError(
-        "Compte créé. Confirmez votre email, puis connectez-vous pour terminer la liaison.",
+      // Not an error: the account exists. Showing this in a red box made a
+      // successful signup look like a failure, which is why people retried
+      // until they hit the email rate limit.
+      return setNotice(
+        "Compte créé. Ouvrez l'email de confirmation, puis connectez-vous : la liaison avec le cabinet se terminera toute seule.",
       );
     }
 
@@ -235,6 +290,19 @@ export function SignupForm() {
             className="rounded-lg border border-red-100 bg-red-50/70 px-3 py-2 text-sm text-red-600"
           >
             {error}
+          </p>
+        ) : null}
+
+        {/* An account that WAS created, waiting on a confirmation email, is
+            good news. It used to appear in the red box above, which read as a
+            failure and sent people round the retry loop that exhausts the
+            email quota. */}
+        {notice ? (
+          <p
+            role="status"
+            className="rounded-lg border border-teal-100 bg-teal-50/70 px-3 py-2 text-sm leading-relaxed text-teal-800"
+          >
+            {notice}
           </p>
         ) : null}
 

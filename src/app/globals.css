@@ -11,68 +11,184 @@ body {
   font-family: var(--font-sans), system-ui, sans-serif;
 }
 
+/*
+ * One token set, two expressions.
+ *
+ * The public site and the professional console draw from the same variables;
+ * what separates them is the ground they sit on. `--background` is the cool
+ * grey the console works against all day; `--paper` is the warmer sheet the
+ * public pages use, so the annuaire feels like something you browse rather
+ * than something you operate. Everything else — ink, primary, status — is
+ * shared, which is what keeps the two halves recognisably one product.
+ *
+ * Public pages previously wrote raw slate and teal literals directly. Those
+ * are being replaced token by token; anything still hardcoded is a leftover,
+ * not a decision.
+ */
 @layer base {
   :root {
-    /* Matches the doctor's desktop app so the two read as one product. */
-    --background: 220 20% 97%;
-    --foreground: 224 24% 12%;
+    /* Grounds */
+    --background: 150 13% 94%; /* console */
+    --paper: 42 33% 98%; /* public */
+    --paper-muted: 44 20% 94%;
+
+    --foreground: 168 33% 9%;
 
     --card: 0 0% 100%;
-    --card-foreground: 224 24% 12%;
+    --card-foreground: 168 33% 9%;
 
     --popover: 0 0% 100%;
-    --popover-foreground: 224 24% 12%;
+    --popover-foreground: 168 33% 9%;
 
-    --primary: 173 72% 32%;
+    /* Brand. Raised from the old 173 72% 32%: that shade cleared 4.5:1 on
+       white by a hair and failed it the moment it was used under 18px. */
+    --primary: 173 77% 24%;
     --primary-foreground: 0 0% 100%;
+    --primary-soft: 166 32% 92%;
+    --primary-soft-foreground: 173 79% 18%;
 
-    --secondary: 220 16% 93%;
-    --secondary-foreground: 224 22% 18%;
+    /* Second accent, reserved for the operator back-office so it never reads
+       as a patient- or practice-facing surface. */
+    --clay: 20 59% 41%;
 
-    --muted: 220 16% 94%;
-    --muted-foreground: 220 12% 42%;
+    --secondary: 150 13% 96%;
+    --secondary-foreground: 168 28% 16%;
 
-    --accent: 173 45% 94%;
-    --accent-foreground: 173 72% 24%;
+    --muted: 44 16% 93%;
+    --muted-foreground: 163 9% 41%;
 
-    --destructive: 0 75% 48%;
+    --accent: 166 32% 92%;
+    --accent-foreground: 173 79% 18%;
+
+    --destructive: 3 71% 41%;
     --destructive-foreground: 0 0% 100%;
 
-    --border: 220 15% 88%;
-    --input: 220 15% 86%;
-    --ring: 173 72% 32%;
+    --border: 158 13% 88%;
+    /* Warmer rule for the public pages, so a card edge on --paper does not
+       read as a cool line laid over a warm sheet. */
+    --border-warm: 44 16% 87%;
+    --input: 158 13% 84%;
+    --ring: 173 77% 24%;
 
     --radius: 0.75rem;
+
+    /*
+     * Status. Named for what they mean, not what colour they are, because the
+     * five appointment states and the five duty/availability states have to
+     * agree across the annuaire, the agenda and the request queue.
+     */
+    --ok: 161 68% 28%;
+    --ok-soft: 154 38% 92%;
+    --ok-foreground: 162 72% 21%;
+
+    --warn: 36 86% 32%;
+    --warn-soft: 39 80% 92%;
+    --warn-foreground: 37 91% 25%;
+
+    --danger: 3 71% 41%;
+    --danger-soft: 6 71% 95%;
+    --danger-foreground: 3 72% 32%;
+
+    --info: 212 71% 39%;
+    --info-soft: 212 61% 94%;
+    --info-foreground: 211 71% 31%;
+
+    --lab: 260 30% 32%;
+    --lab-soft: 270 43% 95%;
+    --lab-foreground: 260 30% 32%;
+
+    /*
+     * The navigation rail.
+     *
+     * Its own scale rather than `bg-foreground`, because the rail is dark in
+     * BOTH themes — reusing the ink token would flip it to near-white the
+     * moment dark mode is switched on, which is precisely backwards.
+     *
+     * `rail-admin` is the operator back-office: a warm near-black under the
+     * clay accent, so "am I in the back-office?" is answered before reading a
+     * single word.
+     */
+    --rail: 168 33% 9%;
+    --rail-foreground: 153 18% 92%;
+    --rail-muted: 161 11% 65%;
+    --rail-border: 164 17% 16%;
+    --rail-raised: 159 19% 11%;
+    --rail-admin: 23 24% 8%;
+    --rail-admin-raised: 24 22% 12%;
+    --rail-admin-border: 22 22% 18%;
+    --rail-admin-muted: 25 18% 64%;
   }
 
   .dark {
-    --background: 224 20% 9%;
-    --foreground: 215 20% 92%;
+    --background: 161 23% 5%;
+    --paper: 161 23% 5%;
+    --paper-muted: 159 21% 8%;
 
-    --card: 224 20% 12%;
-    --card-foreground: 215 20% 92%;
+    --foreground: 153 18% 92%;
 
-    --popover: 224 20% 12%;
-    --popover-foreground: 215 20% 92%;
+    --card: 159 21% 8%;
+    --card-foreground: 153 18% 92%;
 
-    --primary: 173 65% 48%;
-    --primary-foreground: 224 20% 9%;
+    --popover: 159 19% 11%;
+    --popover-foreground: 153 18% 92%;
 
-    --secondary: 224 18% 16%;
-    --secondary-foreground: 215 20% 88%;
+    --primary: 168 51% 52%;
+    --primary-foreground: 161 23% 5%;
+    --primary-soft: 164 17% 16%;
+    --primary-soft-foreground: 168 51% 62%;
 
-    --muted: 224 18% 16%;
-    --muted-foreground: 215 14% 56%;
+    --clay: 20 59% 55%;
 
-    --accent: 173 40% 18%;
-    --accent-foreground: 173 65% 72%;
+    --secondary: 164 17% 16%;
+    --secondary-foreground: 153 18% 88%;
 
-    --destructive: 0 68% 52%;
+    --muted: 164 17% 16%;
+    --muted-foreground: 161 11% 65%;
+
+    --accent: 164 17% 16%;
+    --accent-foreground: 168 51% 62%;
+
+    --destructive: 3 62% 52%;
     --destructive-foreground: 0 0% 100%;
 
-    --border: 224 18% 18%;
-    --input: 224 18% 20%;
-    --ring: 173 65% 48%;
+    --border: 164 17% 16%;
+    --border-warm: 164 17% 16%;
+    --input: 164 17% 20%;
+    --ring: 168 51% 52%;
+
+    /* Dark is chosen, not flipped: each step is re-picked against the dark
+       surface rather than derived from the light one. */
+    --ok: 161 51% 46%;
+    --ok-soft: 161 30% 14%;
+    --ok-foreground: 161 51% 62%;
+
+    --warn: 39 72% 55%;
+    --warn-soft: 37 35% 14%;
+    --warn-foreground: 39 72% 66%;
+
+    --danger: 3 68% 58%;
+    --danger-soft: 3 32% 15%;
+    --danger-foreground: 3 68% 70%;
+
+    --info: 212 65% 60%;
+    --info-soft: 212 32% 15%;
+    --info-foreground: 212 65% 72%;
+
+    --lab: 264 45% 68%;
+    --lab-soft: 264 24% 17%;
+    --lab-foreground: 264 45% 76%;
+
+    /* Darker than the light theme's rail, so it still reads as the edge of the
+       window rather than merging into the page behind it. */
+    --rail: 161 23% 4%;
+    --rail-foreground: 153 18% 92%;
+    --rail-muted: 161 11% 62%;
+    --rail-border: 164 17% 14%;
+    --rail-raised: 159 21% 8%;
+    --rail-admin: 23 24% 5%;
+    --rail-admin-raised: 24 22% 9%;
+    --rail-admin-border: 22 22% 15%;
+    --rail-admin-muted: 25 18% 60%;
   }
 }
 
@@ -82,9 +198,17 @@ body {
   }
   body {
     @apply bg-background text-foreground antialiased;
-    font-feature-settings: "cv11", "ss01";
   }
-  /* Tabular figures keep times and ages from jittering as they change. */
+
+  /* Fraunces is a variable optical-size face: without this it renders at its
+     smallest optical master, which is drawn for body text and looks weak at
+     display sizes. */
+  .font-display {
+    font-variation-settings: "opsz" 96;
+  }
+
+  /* Tabular figures keep times, distances and dossier numbers from jittering
+     as they change. */
   .tnum {
     font-variant-numeric: tabular-nums;
   }
@@ -126,22 +250,13 @@ body {
   }
 
   /*
-   * Dissolves the bottom edge of an image into whatever is behind it.
-   *
-   * A mask rather than a gradient overlay: an overlay has to know the exact
-   * colour it is fading towards, and gets it wrong the moment the section
-   * behind changes. This fades to transparent, so it is right against anything.
+   * Was three stacked radial gradients behind every section header. A wash
+   * like that reads as decoration applied to a page rather than as the page,
+   * and it fought every card laid on top of it for contrast. Same class name
+   * so the pages still using it keep working; it is now simply the warm sheet
+   * the rest of the public side is built on.
    */
-  .fade-bottom {
-    -webkit-mask-image: linear-gradient(to bottom, #000 58%, transparent 100%);
-    mask-image: linear-gradient(to bottom, #000 58%, transparent 100%);
-  }
-
-  /* Soft tinted wash used behind hero panels and section headers. */
   .bg-mesh {
-    background-image:
-      radial-gradient(at 0% 0%, hsl(var(--primary) / 0.13) 0px, transparent 55%),
-      radial-gradient(at 100% 0%, hsl(210 90% 55% / 0.1) 0px, transparent 50%),
-      radial-gradient(at 50% 100%, hsl(var(--primary) / 0.08) 0px, transparent 55%);
+    background-color: hsl(var(--paper-muted));
   }
 }

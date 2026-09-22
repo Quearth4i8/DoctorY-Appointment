@@ -27,7 +27,12 @@ import { cn, dossierLabel } from "@/lib/utils";
 import type { SafePatient } from "@/types";
 import { PatientFormDialog } from "./patient-form-dialog";
 
-export function PatientsManager() {
+export function PatientsManager({
+  initialPatients = null,
+}: {
+  /** The empty-search list as the server already fetched it. */
+  initialPatients?: SafePatient[] | null;
+}) {
   const qc = useQueryClient();
   const [term, setTerm] = useState("");
   const debounced = useDebounced(term, 300);
@@ -47,6 +52,8 @@ export function PatientsManager() {
     queryKey: ["patients-list", debounced],
     queryFn: () => searchPatients(debounced),
     staleTime: 10_000,
+    // Seeds only the unfiltered list; any search term fetches.
+    initialData: debounced === "" && initialPatients ? initialPatients : undefined,
   });
 
   function openNew() {

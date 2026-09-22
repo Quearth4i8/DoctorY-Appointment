@@ -191,8 +191,8 @@ export function AcceptRequestDialog({
                     is nothing to choose and creating a duplicate would be a
                     mistake — the option is hidden below. */}
                 {locked ? (
-                  <p className="flex items-start gap-2 rounded-xl border border-emerald-200 bg-emerald-50 px-3.5 py-2.5 text-sm text-emerald-800">
-                    <ShieldCheck className="mt-0.5 h-4 w-4 shrink-0 text-emerald-600" />
+                  <p className="flex items-start gap-2 rounded-xl border border-ok/25 bg-ok-soft px-3.5 py-2.5 text-sm text-ok-foreground">
+                    <ShieldCheck className="mt-0.5 h-4 w-4 shrink-0 text-ok-foreground" />
                     <span>
                       Dossier N° {request.numero_dossier} vérifié : patient déjà
                       enregistré.
@@ -267,7 +267,7 @@ export function AcceptRequestDialog({
                 {/* Said they were a returning patient, but nothing matched —
                     worth flagging rather than silently creating a duplicate. */}
                 {request.is_existing_patient && !locked ? (
-                  <p className="flex items-start gap-1.5 text-xs text-amber-700">
+                  <p className="flex items-start gap-1.5 text-xs text-warn-foreground">
                     <AlertTriangle className="mt-0.5 h-3.5 w-3.5 shrink-0" />
                     Le patient se déclare déjà suivi
                     {request.numero_dossier ? ` (N° ${request.numero_dossier})` : ""},
@@ -289,7 +289,7 @@ export function AcceptRequestDialog({
           {/* The slot they asked for is gone. Say it plainly — she has to agree
               a new one on the phone, and the date below is only a guess. */}
           {preferredPassed ? (
-            <p className="flex items-start gap-2 rounded-xl border border-amber-200 bg-amber-50 px-3.5 py-2.5 text-sm text-amber-800">
+            <p className="flex items-start gap-2 rounded-xl border border-warn/25 bg-warn-soft px-3.5 py-2.5 text-sm text-warn-foreground">
               <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" />
               <span>
                 Le créneau demandé (

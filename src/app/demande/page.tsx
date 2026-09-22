@@ -4,7 +4,8 @@ import Link from "next/link";
 import { Suspense } from "react";
 import { CalendarX2 } from "lucide-react";
 
-import { getDoctorBySlug } from "@/lib/doctors";
+import { getDoctorById, getDoctorBySlug } from "@/lib/doctors";
+import { getProviderBySlug } from "@/lib/providers";
 import { RequestForm } from "./request-form";
 
 export const dynamic = "force-dynamic";
@@ -16,18 +17,53 @@ export const metadata: Metadata = {
 
 const SLOT_RE = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}$/;
 
+/**
+ * The doctor behind whichever handle the visitor arrived with.
+ *
+ * Two entry points, because the annuaire and the old pages address the same
+ * agenda differently: `?medecin=` is a `doctors` slug, `?etablissement=` is a
+ * `providers` slug. Requests are still submitted against a doctor slug, so an
+ * establishment is resolved through `legacy_doctor_id` — not by assuming its
+ * slug matches, which is true today only because the backfill copied it.
+ *
+ * `backHref` is where "choose a slot first" sends them, and it has to be the
+ * page they actually came from or they bounce between two profiles.
+ */
+async function resolveTarget(searchParams: {
+  medecin?: string;
+  etablissement?: string;
+}) {
+  const providerSlug = searchParams.etablissement ?? "";
+  if (providerSlug) {
+    const provider = await getProviderBySlug(providerSlug);
+    if (!provider?.is_published || !provider.legacy_doctor_id) {
+      return { doctor: null, backHref: `/etablissement/${providerSlug}` };
+    }
+    const doctor = await getDoctorById(provider.legacy_doctor_id);
+    return {
+      doctor: doctor?.is_published ? doctor : null,
+      backHref: `/etablissement/${provider.slug}#creneaux`,
+    };
+  }
+
+  const slug = searchParams.medecin ?? "";
+  const doctor = slug ? await getDoctorBySlug(slug) : null;
+  return {
+    doctor: doctor?.is_published ? doctor : null,
+    backHref: slug ? `/medecins/${slug}` : "/recherche",
+  };
+}
+
 export default async function DemandePage({
   searchParams,
 }: {
-  searchParams: { medecin?: string; at?: string };
+  searchParams: { medecin?: string; etablissement?: string; at?: string };
 }) {
-  const slug = searchParams.medecin ?? "";
   const at = searchParams.at ?? "";
 
   // Loaded here rather than in the form so the visitor can see whose agenda
   // they are booking without an extra client round-trip.
-  const doctor = slug ? await getDoctorBySlug(slug) : null;
-  const published = doctor?.is_published ? doctor : null;
+  const { doctor: published, backHref } = await resolveTarget(searchParams);
   const hasSlot = SLOT_RE.test(at);
 
   return (
@@ -56,8 +92,8 @@ export default async function DemandePage({
             place. */}
         {!published || !hasSlot ? (
           <div className="rounded-2xl bg-white p-9 text-center shadow-2xl">
-            <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-full bg-amber-50">
-              <CalendarX2 className="h-7 w-7 text-amber-600" />
+            <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-full bg-warn-soft">
+              <CalendarX2 className="h-7 w-7 text-warn-foreground" />
             </div>
             <h1 className="mt-5 text-xl font-bold text-slate-800">
               Choisissez d&apos;abord un créneau
@@ -68,10 +104,10 @@ export default async function DemandePage({
                 : "Sélectionnez un médecin, puis une heure disponible dans son agenda."}
             </p>
             <Link
-              href={published ? `/medecins/${published.slug}` : "/medecins"}
-              className="mt-6 inline-flex h-12 items-center rounded-xl bg-teal-600 px-6 font-semibold text-white transition-colors hover:bg-teal-700"
+              href={backHref}
+              className="mt-6 inline-flex h-12 items-center rounded-xl bg-primary px-6 font-semibold text-primary-foreground transition-all hover:brightness-110"
             >
-              {published ? "Voir les créneaux" : "Voir les médecins"}
+              {published ? "Voir les créneaux" : "Choisir un établissement"}
             </Link>
           </div>
         ) : (

@@ -171,7 +171,7 @@ export function DoctorSettingsForm({ doctor }: { doctor: Doctor }) {
           // The border carries the state, so the answer to "is this live?" is
           // legible from the edge of the screen without reading a word.
           published
-            ? "border-emerald-200 bg-emerald-50/60"
+            ? "border-ok/25 bg-ok-soft/60"
             : "border-border/70 bg-card bg-mesh",
         )}
       >
@@ -180,7 +180,7 @@ export function DoctorSettingsForm({ doctor }: { doctor: Doctor }) {
             className={cn(
               "flex h-11 w-11 items-center justify-center rounded-xl",
               published
-                ? "bg-emerald-100 text-emerald-700"
+                ? "bg-ok-soft text-ok-foreground"
                 : "bg-secondary text-muted-foreground",
             )}
           >

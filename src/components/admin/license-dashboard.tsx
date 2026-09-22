@@ -95,7 +95,7 @@ export function LicenseDashboard() {
           icon={ShieldAlert}
           label="Clés au maximum"
           value={stats.atLimit}
-          tint="bg-amber-100 text-amber-700 dark:bg-amber-500/15 dark:text-amber-400"
+          tint="bg-warn-soft text-warn-foreground dark:bg-warn/15 dark:text-warn"
         />
         <StatTile
           icon={ShieldCheck}

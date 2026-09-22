@@ -101,7 +101,7 @@ export function PairingCard() {
           className={cn(
             "flex h-9 w-9 shrink-0 items-center justify-center rounded-lg",
             online
-              ? "bg-emerald-100 text-emerald-700"
+              ? "bg-ok-soft text-ok-foreground"
               : "bg-secondary text-muted-foreground",
           )}
         >

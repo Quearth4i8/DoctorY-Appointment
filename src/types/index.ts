@@ -166,3 +166,253 @@ export type NewAppointmentInput = {
   notes?: string | null;
   status?: AppointmentStatus;
 };
+
+// ─── The annuaire (Supabase: providers, practitioners, services…) ────────────
+//
+// `Doctor` above is the old one-practitioner-per-cabinet shape and still backs
+// the existing pages. These are what replaces it: an establishment of any
+// trade, the practitioners inside it, and what it offers.
+
+export type ProviderKind =
+  | "medecin"
+  | "clinique"
+  | "hopital"
+  | "pharmacie"
+  | "parapharmacie"
+  | "laboratoire"
+  | "imagerie"
+  | "dentiste"
+  | "kinesitherapie"
+  | "opticien"
+  | "infirmier"
+  | "sage_femme";
+
+/**
+ * How a patient reaches an establishment — the field that decides what its
+ * public profile renders.
+ *
+ * `agenda` is the only mode that may show a time, because it is the only one
+ * where the times are real: they come from the DoctorY desktop app over the
+ * pairing link. `demande` takes a wish and answers later. `aucune` has nothing
+ * to book and is the correct answer for a pharmacy, not a lesser one.
+ */
+export type BookingMode = "agenda" | "demande" | "aucune";
+
+export type ProviderPlan = "gratuit" | "verifie" | "sponsorise";
+export type ProviderSource = "manuel" | "import" | "revendique";
+
+export type Specialty = {
+  id: string;
+  slug: string;
+  label: string;
+  synonyms: string[];
+  kinds: ProviderKind[];
+};
+
+/** One continuous opening range. `weekday` is 1 = Monday … 7 = Sunday. */
+export type OpeningRange = {
+  weekday: number;
+  opens_at: string; // "08:00"
+  closes_at: string; // "13:00"
+};
+
+export type Service = {
+  id: string;
+  label: string;
+  code: string;
+  category: string;
+  note: string;
+  /** Millimes. Divide by 1000 for dinars — never store the divided value. */
+  amount_millimes: number | null;
+  duration_minutes: number | null;
+  preparation: string;
+  result_delay_hours: number | null;
+};
+
+export type Practitioner = {
+  id: string;
+  slug: string;
+  title: string;
+  full_name: string;
+  bio: string;
+  photo_url: string;
+  languages: string[];
+  booking_mode: BookingMode;
+  accepts_new_patients: boolean;
+  specialties: string[];
+};
+
+/** A pharmacy's on-duty window. Both ends are ISO instants. */
+export type DutyShift = {
+  id: string;
+  starts_at: string;
+  ends_at: string;
+  kind: "nuit" | "jour" | "ferie";
+  note: string;
+};
+
+export type Provider = {
+  id: string;
+  kind: ProviderKind;
+  slug: string;
+
+  name: string;
+  legal_name: string;
+  bio: string;
+  photo_url: string;
+  logo_url: string;
+
+  address: string;
+  city: string;
+  postcode: string;
+  governorate: string;
+  latitude: number | null;
+  longitude: number | null;
+
+  phone: string;
+  phone_alt: string;
+  email: string;
+  website: string;
+  languages: string[];
+
+  booking_mode: BookingMode;
+
+  accepts_cnam: boolean;
+  third_party_payer: boolean;
+  wheelchair_access: boolean;
+  accepts_new_patients: boolean;
+  open_24_7: boolean;
+  has_emergency: boolean;
+
+  source: ProviderSource;
+  /** Set when the operator has checked this establishment exists as described. */
+  verified_at: string | null;
+  claimed_at: string | null;
+
+  plan: ProviderPlan;
+  plan_expires_at: string | null;
+  /**
+   * Whether the paid placement is live *right now*. Derived rather than
+   * stored: a subscription that lapsed last night must stop buying position
+   * this morning without a job having run.
+   */
+  is_sponsored: boolean;
+
+  is_published: boolean;
+
+  /**
+   * The `doctors` row this establishment was backfilled from, or null when it
+   * was created natively.
+   *
+   * Appointments in Supabase are still keyed to a doctor, so this is what
+   * makes a live agenda resolvable. A provider without one has no occupied
+   * ranges to check against — which is why the profile must NOT render a slot
+   * grid for it: every hour would come back free, which is a lie rather than
+   * an empty state.
+   */
+  legacy_doctor_id: string | null;
+
+  /** Only ever populated when the query asked for them. */
+  specialties: Specialty[];
+  practitioners: Practitioner[];
+  services: Service[];
+  hours: OpeningRange[];
+};
+
+/** A provider as the results list and the map need it — no children loaded. */
+export type ProviderSummary = Pick<
+  Provider,
+  | "id"
+  | "kind"
+  | "slug"
+  | "name"
+  | "photo_url"
+  | "address"
+  | "city"
+  | "latitude"
+  | "longitude"
+  | "phone"
+  | "booking_mode"
+  | "accepts_cnam"
+  | "third_party_payer"
+  | "wheelchair_access"
+  | "accepts_new_patients"
+  | "open_24_7"
+  | "has_emergency"
+  | "is_sponsored"
+> & {
+  verified: boolean;
+  specialties: string[];
+  /** Kilometres from the search origin, when one was given. */
+  distance_km: number | null;
+  /** Cheapest published service, in millimes. */
+  from_millimes: number | null;
+  /** Set for pharmacies when a duty shift covers now. */
+  on_duty_until: string | null;
+};
+
+export type ProviderSearchParams = {
+  q?: string;
+  kinds?: ProviderKind[];
+  specialty?: string;
+  city?: string;
+  /** Sort and filter by distance from here. */
+  near?: { lat: number; lng: number; radiusKm: number };
+  openNow?: boolean;
+  onDuty?: boolean;
+  cnam?: boolean;
+  thirdParty?: boolean;
+  wheelchair?: boolean;
+  acceptingNew?: boolean;
+  languages?: string[];
+  sort?: "distance" | "soonest" | "name";
+  limit?: number;
+  /** Opaque cursor from the previous page. */
+  cursor?: string | null;
+};
+
+export const PROVIDER_KIND_LABELS: Record<ProviderKind, string> = {
+  medecin: "Médecin",
+  clinique: "Clinique",
+  hopital: "Hôpital",
+  pharmacie: "Pharmacie",
+  parapharmacie: "Parapharmacie",
+  laboratoire: "Laboratoire",
+  imagerie: "Imagerie",
+  dentiste: "Dentiste",
+  kinesitherapie: "Kinésithérapie",
+  opticien: "Opticien",
+  infirmier: "Infirmier",
+  sage_femme: "Sage-femme",
+};
+
+/**
+ * The booking mode a kind gets when its profile is first created.
+ *
+ * A default, never a rule: a clinic that pairs a machine moves to `agenda`,
+ * and a parapharmacie that wants appointments may ask for `demande`. What
+ * this encodes is only which answer is right for most of them on day one.
+ */
+export const DEFAULT_BOOKING_MODE: Record<ProviderKind, BookingMode> = {
+  medecin: "agenda",
+  clinique: "agenda",
+  hopital: "demande",
+  pharmacie: "aucune",
+  parapharmacie: "aucune",
+  laboratoire: "demande",
+  imagerie: "demande",
+  dentiste: "agenda",
+  kinesitherapie: "agenda",
+  opticien: "demande",
+  infirmier: "demande",
+  sage_femme: "agenda",
+};
+
+/** Millimes → "45 DT" / "45,500 DT". Never does float arithmetic on dinars. */
+export function formatMillimes(amount: number | null): string {
+  if (amount === null || amount === undefined) return "";
+  const dinars = Math.trunc(amount / 1000);
+  const rest = amount % 1000;
+  if (rest === 0) return `${dinars} DT`;
+  return `${dinars},${String(rest).padStart(3, "0")} DT`;
+}

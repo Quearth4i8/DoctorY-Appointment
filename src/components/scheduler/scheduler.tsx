@@ -59,7 +59,14 @@ const NEXT_LABEL: Record<CalendarView, string> = {
   month: "Mois suivant",
 };
 
-export function Scheduler() {
+/** The week the server already fetched, when it matches what we are showing. */
+export type InitialWeek = {
+  from: string;
+  to: string;
+  appointments: Appointment[];
+} | null;
+
+export function Scheduler({ initialWeek = null }: { initialWeek?: InitialWeek }) {
   const qc = useQueryClient();
   const [anchor, setAnchor] = useState(() => new Date());
   const [view, setView] = useState<CalendarView>("week");
@@ -81,6 +88,17 @@ export function Scheduler() {
     useQuery({
       queryKey: ["week", from, to],
       queryFn: () => fetchWeek(from, to),
+      /*
+       * Only when it is the same week. The server computed its range from its
+       * own clock, so a page rendered either side of midnight — or by someone
+       * in another timezone — would otherwise hand the grid the wrong seven
+       * days. When the keys disagree this is simply undefined and the query
+       * behaves exactly as it always did.
+       */
+      initialData:
+        initialWeek && initialWeek.from === from && initialWeek.to === to
+          ? initialWeek.appointments
+          : undefined,
     });
 
   function invalidate() {
@@ -233,7 +251,7 @@ export function Scheduler() {
             {/* Without this, a range that quietly ignores every click reads as
                 broken rather than as history. */}
             {wholeRangePast ? (
-              <span className="inline-flex items-center gap-1.5 rounded-lg border border-amber-200 bg-amber-50 px-2.5 py-1.5 text-xs font-medium text-amber-800">
+              <span className="inline-flex items-center gap-1.5 rounded-lg border border-warn/25 bg-warn-soft px-2.5 py-1.5 text-xs font-medium text-warn-foreground">
                 <Lock className="h-3.5 w-3.5" />
                 Lecture seule
               </span>

@@ -79,7 +79,7 @@ function DoctorsTable({ doctors, loading }: { doctors: AdminDoctor[] | undefined
                     <td className="py-3 pr-4 sm:pr-6">
                       <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
                         {d.paired ? (
-                          <Globe className="h-3.5 w-3.5 text-emerald-600" />
+                          <Globe className="h-3.5 w-3.5 text-ok-foreground" />
                         ) : (
                           <WifiOff className="h-3.5 w-3.5" />
                         )}

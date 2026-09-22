@@ -457,7 +457,7 @@ export function RequestForm({
                 </span>
               </p>
             ) : (
-              <p className="flex items-start gap-2 rounded-xl border border-amber-200 bg-amber-50 px-3.5 py-2.5 text-sm text-amber-800">
+              <p className="flex items-start gap-2 rounded-xl border border-warn/25 bg-warn-soft px-3.5 py-2.5 text-sm text-warn-foreground">
                 <AlertCircle className="mt-0.5 h-4 w-4 shrink-0" />
                 <span>
                   Ce numéro de dossier et ce téléphone ne correspondent pas.
@@ -525,7 +525,7 @@ export function RequestForm({
         {blocked ? (
           <p
             role="alert"
-            className="mt-5 flex items-start gap-2 rounded-xl border border-amber-200 bg-amber-50 px-3.5 py-2.5 text-sm text-amber-800"
+            className="mt-5 flex items-start gap-2 rounded-xl border border-warn/25 bg-warn-soft px-3.5 py-2.5 text-sm text-warn-foreground"
           >
             <AlertCircle className="mt-0.5 h-4 w-4 shrink-0" />
             <span>{UNAVAILABLE}</span>

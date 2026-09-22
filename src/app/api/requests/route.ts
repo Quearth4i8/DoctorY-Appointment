@@ -1,62 +1,10 @@
-import { NextResponse } from "next/server";
-
-import { resolveStaffDoctorId } from "@/lib/api-response";
-import { createClient, getStaff } from "@/lib/supabase/server";
-import type { RequestStatus } from "@/types";
+import { handleStaff } from "@/lib/api-response";
+import { listRequests } from "@/lib/front-desk";
 
 export const dynamic = "force-dynamic";
 
-const FIELDS =
-  "id, created_at, last_name, first_name, phone, gender, age, reason, " +
-  "is_existing_patient, numero_dossier, dossier_verified, " +
-  "preferred_at, preferred_period, status, reviewed_at, scheduled_at, " +
-  "duration_minutes, staff_notes, patient_id, appointment_id";
-
 /** Lists appointment requests for the review inbox. Staff only. */
 export async function GET(req: Request) {
-  const staff = await getStaff();
-  if (!staff) {
-    return NextResponse.json({ error: "Accès non autorisé." }, { status: 403 });
-  }
-
-  const status = new URL(req.url).searchParams.get("status") as
-    | RequestStatus
-    | "toutes"
-    | null;
-
-  // The anon key + RLS still apply here; getStaff() having succeeded is what
-  // makes is_staff() true for these reads.
-  const supabase = createClient();
-  let query = supabase
-    .from("appointment_requests")
-    .select(FIELDS)
-    .order("created_at", { ascending: false })
-    .limit(200);
-
-  // Scoping is enforced by RLS (can_access_request); repeating it here keeps
-  // the query honest about what it is asking for rather than relying on the
-  // database to silently drop rows.
-  //
-  // Unattributed requests are NOT included: `doctor_id is null` used to be an
-  // escape hatch that showed one cabinet's requests to another cabinet's
-  // secretary. Every request belongs to a practice now.
-  const doctorId = await resolveStaffDoctorId(staff).catch(() => null);
-  if (!doctorId) {
-    return NextResponse.json(
-      { error: "Aucun cabinet n'est associé à ce compte." },
-      { status: 503 },
-    );
-  }
-  query = query.eq("doctor_id", doctorId);
-
-  if (status && status !== "toutes") query = query.eq("status", status);
-
-  const { data, error } = await query;
-  if (error) {
-    return NextResponse.json(
-      { error: "Impossible de charger les demandes." },
-      { status: 500 },
-    );
-  }
-  return NextResponse.json(data ?? []);
+  const status = new URL(req.url).searchParams.get("status");
+  return handleStaff((doctorId) => listRequests(doctorId, status));
 }

@@ -25,8 +25,11 @@ import { ApiError, createPatient, updatePatient } from "@/lib/client-api";
 import { todayKey } from "@/lib/scheduler";
 import type { PatientAdminInput, SafePatient } from "@/types";
 
-/** Matches the options the doctor's desktop app offers, so the two agree. */
-const INSURANCE_OPTIONS = ["Aucune assurance", "CNAM", "Privée"] as const;
+/** Matches the options the doctor's desktop app offers, so the two agree.
+ *  CNAM is two options there — remboursement and étatique — and offering the
+ *  retired single "CNAM" here would put it back on records the doctor has
+ *  already re-filed. */
+const INSURANCE_OPTIONS = ["Aucune assurance", "CNAM remboursement", "CNAM étatique", "Privée"] as const;
 
 /** Radix Select has no concept of an empty value, so "unset" needs a token. */
 const NONE = "__none__";

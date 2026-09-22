@@ -1,5 +1,6 @@
 import "server-only";
 
+import { cache } from "react";
 import { cookies } from "next/headers";
 import { createServerClient } from "@supabase/ssr";
 
@@ -38,11 +39,11 @@ export function createClient() {
  * The signed-in user, or null. Uses getUser() (which revalidates the JWT with
  * Supabase) rather than getSession(), whose cookie payload is client-writable.
  */
-export async function getUser() {
+export const getUser = cache(async function getUser() {
   const supabase = createClient();
   const { data } = await supabase.auth.getUser();
   return data.user;
-}
+});
 
 export type Staff = {
   user_id: string;
@@ -60,7 +61,15 @@ export type Staff = {
  * The signed-in user's staff row (role, name, email), or null if they are not
  * on the allowlist. Every protected page gates on this.
  */
-export async function getStaff(): Promise<Staff | null> {
+/*
+ * Deduplicated for the lifetime of one request.
+ *
+ * Each call is two sequential round trips — revalidate the JWT, then read the
+ * staff row — so a page that asks twice pays twice for an answer that cannot
+ * have changed in between. React's `cache` makes the second and later calls
+ * free without any caller having to thread the result through.
+ */
+export const getStaff = cache(async function getStaff(): Promise<Staff | null> {
   const supabase = createClient();
   const { data: userData } = await supabase.auth.getUser();
   if (!userData.user) return null;
@@ -77,4 +86,4 @@ export async function getStaff(): Promise<Staff | null> {
     doctor_id: (data as { doctor_id?: string | null }).doctor_id ?? null,
     email: userData.user.email ?? "",
   };
-}
+});

@@ -127,48 +127,52 @@ export type StatusMeta = {
 /**
  * Light surfaces, saturated bars.
  *
- * The block backgrounds sit at the 50/200 end so a full week of them stays calm
- * and the patient's name keeps its contrast; the status is carried by the solid
- * accent bar down the left edge, which is legible at a glance even on a block
- * squeezed to 22px. Colouring the whole block strongly instead made a busy day
- * read as an alarm.
+ * The block backgrounds are the `-soft` step of each status token so a full
+ * week of them stays calm and the patient's name keeps its contrast; the
+ * status is carried by the solid accent bar down the left edge, which is
+ * legible at a glance even on a block squeezed to 22px. Colouring the whole
+ * block strongly instead made a busy day read as an alarm.
+ *
+ * Named by meaning rather than hue, and the same four the annuaire uses, so a
+ * confirmed appointment is the same green in the agenda, in the request queue
+ * and on a public profile — and dark mode follows without a second table.
  */
 export const STATUS_META: Record<AppointmentStatus, StatusMeta> = {
   a_venir: {
     value: "a_venir",
     label: "À venir",
-    dot: "bg-sky-500",
-    block: "bg-sky-50 border-sky-200 text-sky-900 hover:border-sky-300",
-    bar: "bg-sky-500",
-    badge: "bg-sky-50 text-sky-700 border border-sky-200",
+    dot: "bg-info",
+    block: "bg-info-soft border-info/25 text-info-foreground hover:border-info/45",
+    bar: "bg-info",
+    badge: "bg-info-soft text-info-foreground border border-info/25",
   },
   approuve: {
     value: "approuve",
     label: "Confirmé",
-    dot: "bg-emerald-500",
-    block:
-      "bg-emerald-50 border-emerald-200 text-emerald-900 hover:border-emerald-300",
-    bar: "bg-emerald-500",
-    badge: "bg-emerald-50 text-emerald-700 border border-emerald-200",
+    dot: "bg-ok",
+    block: "bg-ok-soft border-ok/25 text-ok-foreground hover:border-ok/45",
+    bar: "bg-ok",
+    badge: "bg-ok-soft text-ok-foreground border border-ok/25",
   },
   passe: {
     value: "passe",
     label: "Passé",
-    dot: "bg-slate-400",
+    dot: "bg-muted-foreground",
     // Deliberately the quietest of the four: it is the state most blocks end up
     // in, and history should recede behind what is still to come.
-    block: "bg-slate-50 border-slate-200 text-slate-500 hover:border-slate-300",
-    bar: "bg-slate-400",
-    badge: "bg-slate-100 text-slate-600 border border-slate-200",
+    block:
+      "bg-muted border-border text-muted-foreground hover:border-muted-foreground/40",
+    bar: "bg-muted-foreground",
+    badge: "bg-muted text-muted-foreground border border-border",
   },
   annule: {
     value: "annule",
     label: "Annulé",
-    dot: "bg-rose-500",
+    dot: "bg-danger",
     block:
-      "bg-rose-50 border-rose-200 text-rose-700 hover:border-rose-300 line-through decoration-rose-400/50",
-    bar: "bg-rose-500",
-    badge: "bg-rose-50 text-rose-700 border border-rose-200",
+      "bg-danger-soft border-danger/25 text-danger-foreground hover:border-danger/45 line-through decoration-danger/50",
+    bar: "bg-danger",
+    badge: "bg-danger-soft text-danger-foreground border border-danger/25",
   },
 };
 
