@@ -284,10 +284,16 @@ export function WeekGrid({
     >
       <div className="overflow-x-auto scrollbar-slim rounded-2xl border border-border/70 bg-card shadow-card">
         <div style={{ minWidth }}>
-          {/* Header row: day names */}
+          {/* Header row: day names.
+
+              It parks under the console's top bar, not at the top of the
+              window. This row only scrolls vertically with the PAGE — the
+              wrapper above it scrolls sideways and nothing else — so `top-0`
+              resolved against the viewport and slid the weekday names straight
+              over the header, dragging the gutter's grey up with them. */}
           <div
             style={{ gridTemplateColumns: columns }}
-            className="sticky top-0 z-30 grid border-b border-border bg-muted/50 backdrop-blur-sm"
+            className="sticky top-[var(--app-header-h)] z-20 grid border-b border-border bg-muted/50 backdrop-blur-sm"
           >
             {/* Corner. Sits above the gutter so neither scroll axis reveals a
                 gap where the two sticky edges meet. */}
@@ -334,8 +340,13 @@ export function WeekGrid({
           {/* Body: time gutter + day columns */}
           <div className="grid" style={{ gridTemplateColumns: columns }}>
             {/* Time gutter. Sticky, so the hours stay readable while a week
-                scrolls sideways on a narrow screen. */}
-            <div className="sticky left-0 z-20 border-r border-border bg-muted/40">
+                scrolls sideways on a narrow screen.
+
+                Above the appointments (z-10) so none of them slide over the
+                hours, below the day row (z-20) so the corner still wins where
+                the two sticky edges cross — and below the console header,
+                which it used to tie with and beat on document order alone. */}
+            <div className="sticky left-0 z-[15] border-r border-border bg-muted/40">
               {slots.map((m, i) => (
                 <div
                   key={m}

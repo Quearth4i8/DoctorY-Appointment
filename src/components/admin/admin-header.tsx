@@ -19,7 +19,7 @@ export function AdminHeader({ onMenuClick }: { onMenuClick: () => void }) {
   const title = TITLES[pathname] ?? "Admin";
 
   return (
-    <header className="sticky top-0 z-20 flex h-[3.625rem] shrink-0 items-center gap-3 border-b bg-card px-4 sm:px-6 lg:px-8">
+    <header className="sticky top-0 z-30 flex h-[var(--app-header-h)] shrink-0 items-center gap-3 border-b bg-card px-4 sm:px-6 lg:px-8">
       <button
         type="button"
         onClick={onMenuClick}

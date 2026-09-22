@@ -75,6 +75,16 @@ body {
     --radius: 0.625rem;
 
     /*
+     * Height of the console's top bar.
+     *
+     * A token because two things must agree on it: the bar sets its own
+     * height from this, and anything sticky INSIDE a page parks just below it
+     * using the same value. When the number lived only in the header's class
+     * the agenda's day-row stuck to `top-0` and covered the bar outright.
+     */
+    --app-header-h: 3.625rem;
+
+    /*
      * Status. Named for what they mean, not what colour they are, because the
      * five appointment states and the five duty/availability states have to
      * agree across the annuaire, the agenda and the request queue.
