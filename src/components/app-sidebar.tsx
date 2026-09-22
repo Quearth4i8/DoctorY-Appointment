@@ -97,6 +97,8 @@ export function AppSidebar({
         className={cn(
           "fixed inset-y-0 left-0 z-50 flex w-[15rem] flex-col bg-rail transition-all duration-200",
           "md:sticky md:top-0 md:z-0 md:h-screen md:translate-x-0",
+          // The rail is its own viewport-tall sticky column; only its nav
+          // scrolls, and only when there are more links than fit.
           collapsed && "md:w-16",
           mobileOpen ? "translate-x-0" : "-translate-x-full md:translate-x-0",
         )}

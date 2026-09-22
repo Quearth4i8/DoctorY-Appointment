@@ -8,7 +8,11 @@ import { SearchFilters } from "@/components/public/search-filters";
 import { ScrollToTop } from "@/components/public/scroll-to-top";
 import { SiteFooter, SiteHeader } from "@/components/public/site-chrome";
 import { KIND_ORDER, kindMeta } from "@/lib/provider-kinds";
-import { countProvidersByKind, searchProviders } from "@/lib/providers";
+import {
+  countProvidersByKind,
+  listSpecialties,
+  searchProviders,
+} from "@/lib/providers";
 import type { ProviderKind, ProviderSearchParams } from "@/types";
 
 export const dynamic = "force-dynamic";
@@ -68,9 +72,12 @@ export default async function SearchPage({
   searchParams: RawParams;
 }) {
   const params = toSearchParams(searchParams);
-  const [results, counts] = await Promise.all([
+  // Alongside the results, not after them: the taxonomy only feeds the search
+  // bar's suggestions, so it must never add a round trip to the page itself.
+  const [results, counts, specialties] = await Promise.all([
     searchProviders(params),
     countProvidersByKind(),
+    listSpecialties(),
   ]);
 
   const firstKind = params.kinds?.length === 1 ? params.kinds[0] : null;
@@ -79,13 +86,31 @@ export default async function SearchPage({
     <div className="flex min-h-screen flex-col bg-paper">
       <SiteHeader />
 
+      {/* The strip is the page header now: title, count and the query that
+          produced them, in one band. It used to be a narrow search box floating
+          in a wide empty strip, under a row of trade tabs that repeated the
+          header nav above it and the filter rail below it. */}
       <div className="border-b border-border-warm bg-paper-muted">
-        <div className="mx-auto w-full max-w-[1600px] px-4 py-6 sm:px-6 lg:px-8">
+        <div className="mx-auto flex w-full max-w-[1600px] flex-col gap-4 px-4 py-6 sm:px-6 lg:px-8">
+          <div className="flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1">
+            <h1 className="text-[1.375rem] font-bold tracking-tight">
+              {heading(params)}
+            </h1>
+            <p className="font-mono text-[0.8rem] text-muted-foreground tnum">
+              {results.length === 0
+                ? "aucun résultat"
+                : `${results.length} établissement${results.length > 1 ? "s" : ""}`}
+            </p>
+          </div>
+
           <SearchBar
             size="sm"
+            fullWidth
+            showKinds={false}
             defaultQuery={params.q ?? ""}
             defaultWhere={params.city ?? ""}
             defaultKind={firstKind}
+            specialties={specialties}
           />
         </div>
       </div>
@@ -94,21 +119,10 @@ export default async function SearchPage({
         <SearchFilters counts={counts} />
 
         <section className="min-w-0 flex-1">
-          <div className="flex flex-wrap items-end justify-between gap-3 border-b border-border-warm pb-4">
-            <div className="flex flex-col gap-1">
-              <h1 className="text-xl font-bold tracking-tight">{heading(params)}</h1>
-              <p className="font-mono text-xs text-muted-foreground tnum">
-                {results.length === 0
-                  ? "aucun résultat"
-                  : `${results.length} établissement${results.length > 1 ? "s" : ""}`}
-              </p>
-            </div>
-          </div>
-
           {results.length === 0 ? (
             <EmptyState />
           ) : (
-            <ul className="mt-5 flex flex-col gap-3">
+            <ul className="flex flex-col gap-3">
               {results.map((provider) => (
                 <li key={provider.id}>
                   <ProviderCard provider={provider} />

@@ -9,7 +9,9 @@ import {
   TurnstileGate,
   turnstileMisconfigured,
 } from "@/components/public/turnstile-gate";
+import { Combobox } from "@/components/ui/combobox";
 import { KIND_ORDER, kindMeta } from "@/lib/provider-kinds";
+import { ALL_CITY_OPTIONS } from "@/lib/tunisia";
 import { cn } from "@/lib/utils";
 import type { ProviderKind } from "@/types";
 
@@ -175,7 +177,19 @@ export function ClaimForm({
             required
             maxLength={200}
           />
-          <Field id="city" label="Ville" value={city} onChange={setCity} maxLength={120} />
+          <div className="flex flex-col gap-1.5">
+            <span className="text-sm font-semibold">Ville</span>
+            <Combobox
+              value={city}
+              onChange={setCity}
+              options={ALL_CITY_OPTIONS}
+              allowCustom
+              placeholder="Choisir une ville"
+              searchPlaceholder="Ville ou délégation…"
+              emptyLabel="Aucune ville connue — tapez la vôtre"
+              className="h-12 rounded-xl text-sm"
+            />
+          </div>
         </div>
       ) : null}
 

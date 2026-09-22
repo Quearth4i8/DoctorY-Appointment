@@ -131,7 +131,7 @@ export function ReportForm({
               value={r.value}
               checked={reason === r.value}
               onChange={() => setReason(r.value)}
-              className="h-4 w-4 accent-[hsl(var(--primary))]"
+              className="h-4 w-4"
             />
             {r.label}
           </label>

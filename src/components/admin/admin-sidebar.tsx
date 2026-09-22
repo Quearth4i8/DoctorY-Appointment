@@ -4,9 +4,11 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import {
+  Building2,
   ChevronLeft,
   ChevronRight,
   Home,
+  Inbox,
   KeyRound,
   LayoutDashboard,
   ShieldCheck,
@@ -20,6 +22,8 @@ const STORAGE_KEY = "doctory_admin_sidebar_collapsed";
 
 const LINKS = [
   { href: "/admin", label: "Vue d'ensemble", icon: LayoutDashboard },
+  { href: "/admin/demandes", label: "Demandes", icon: Inbox },
+  { href: "/admin/etablissements", label: "Établissements", icon: Building2 },
   { href: "/admin/comptes", label: "Comptes", icon: Users },
   { href: "/admin/licences", label: "Licences", icon: KeyRound },
 ] as const;
@@ -73,6 +77,8 @@ export function AdminSidebar({
         className={cn(
           "fixed inset-y-0 left-0 z-50 flex w-[15rem] flex-col bg-rail-admin transition-all duration-200",
           "md:sticky md:top-0 md:z-0 md:h-screen md:translate-x-0",
+          // The rail is its own viewport-tall sticky column; only its nav
+          // scrolls, and only when there are more links than fit.
           collapsed && "md:w-16",
           mobileOpen ? "translate-x-0" : "-translate-x-full md:translate-x-0",
         )}
@@ -126,7 +132,9 @@ export function AdminSidebar({
           {LINKS.map(({ href, label, icon: Icon }) => {
             // Exact match only — "/admin" is its own page now, not a shared
             // prefix for "/admin/comptes" and "/admin/licences".
-            const active = pathname === href;
+            const active =
+              pathname === href ||
+              (href !== "/admin" && pathname.startsWith(`${href}/`));
             return (
               <Link
                 key={href}

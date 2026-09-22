@@ -24,12 +24,20 @@ const config: Config = {
            tariffs. Tabular by construction, so columns stop dancing. */
         mono: ["var(--font-mono)", "ui-monospace", "monospace"],
       },
+      /*
+       * One radius, five steps off it.
+       *
+       * The point is that everything is a fixed offset from `--radius`, so the
+       * whole product sharpens or softens from one number instead of drifting
+       * as people reach for whichever rounded-* looked right that day.
+       */
       borderRadius: {
-        lg: "var(--radius)",
-        md: "calc(var(--radius) - 2px)",
         sm: "calc(var(--radius) - 4px)",
+        md: "calc(var(--radius) - 2px)",
+        lg: "var(--radius)",
         xl: "calc(var(--radius) + 4px)",
-        "2xl": "calc(var(--radius) + 8px)",
+        "2xl": "calc(var(--radius) + 10px)",
+        "3xl": "calc(var(--radius) + 18px)",
       },
       colors: {
         background: "hsl(var(--background))",
@@ -101,14 +109,41 @@ const config: Config = {
         info: statusScale("info"),
         lab: statusScale("lab"),
       },
+      /*
+       * Elevation led by a hairline, not by blur.
+       *
+       * Every step opens with a 1px spread ring at low alpha: that ring is what
+       * reads as a crisp edge, and it holds up on a dark ground where a soft
+       * drop shadow simply disappears. The blur underneath only suggests
+       * height, so it stays tight — wide soft shadows are what make an
+       * interface look smudged rather than built.
+       */
       boxShadow: {
-        card: "0 1px 3px rgba(15,30,27,0.06), 0 1px 2px rgba(15,30,27,0.04)",
-        "card-hover": "0 6px 16px rgba(15,30,27,0.09), 0 2px 4px rgba(15,30,27,0.05)",
-        modal: "0 24px 48px rgba(15,30,27,0.18), 0 8px 16px rgba(15,30,27,0.08)",
+        card: "0 0 0 1px rgba(15,30,27,0.04), 0 1px 2px rgba(15,30,27,0.05)",
+        "card-hover":
+          "0 0 0 1px rgba(15,30,27,0.06), 0 4px 10px -2px rgba(15,30,27,0.10), 0 2px 4px -2px rgba(15,30,27,0.06)",
+        lifted:
+          "0 0 0 1px rgba(15,30,27,0.06), 0 10px 24px -6px rgba(15,30,27,0.14), 0 3px 6px -3px rgba(15,30,27,0.08)",
+        modal:
+          "0 0 0 1px rgba(15,30,27,0.08), 0 24px 48px -12px rgba(15,30,27,0.28), 0 8px 16px -8px rgba(15,30,27,0.12)",
         glow: "0 0 0 3px hsl(var(--primary) / 0.15)",
         "inner-sm": "inset 0 1px 2px rgba(15,30,27,0.04)",
       },
+      transitionDuration: {
+        /* Three speeds, chosen by what is moving. Anything slower than 400ms
+           on an interface control reads as lag rather than polish. */
+        fast: "120ms",
+        base: "180ms",
+        DEFAULT: "180ms",
+        slow: "320ms",
+      },
       keyframes: {
+        /* Entrance: rises and settles rather than sliding to a stop. The
+           overshoot-free spring curve below is what makes it feel placed. */
+        reveal: {
+          from: { opacity: "0", transform: "translateY(14px)" },
+          to: { opacity: "1", transform: "translateY(0)" },
+        },
         "fade-in": {
           from: { opacity: "0" },
           to: { opacity: "1" },
@@ -127,13 +162,18 @@ const config: Config = {
         },
       },
       animation: {
+        reveal: "reveal 0.55s cubic-bezier(0.16, 1, 0.3, 1) both",
         "fade-in": "fade-in 0.25s ease-out both",
         "slide-up": "slide-up 0.28s cubic-bezier(0.16, 1, 0.3, 1) both",
         "scale-in": "scale-in 0.2s cubic-bezier(0.16, 1, 0.3, 1) both",
         shimmer: "shimmer 1.8s ease-in-out infinite",
       },
       transitionTimingFunction: {
+        /* `spring` decelerates hard at the end — things arrive and stay put.
+           `smooth` is the neutral one for colour and opacity, where a spring
+           curve would be motion nobody asked for. */
         spring: "cubic-bezier(0.16, 1, 0.3, 1)",
+        smooth: "cubic-bezier(0.4, 0, 0.2, 1)",
       },
     },
   },

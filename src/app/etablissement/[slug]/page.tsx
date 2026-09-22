@@ -14,6 +14,7 @@ import {
 } from "lucide-react";
 
 import { AvailabilityGrid } from "@/components/public/availability-grid";
+import { ProviderAvatar } from "@/components/public/provider-avatar";
 import { ScrollToTop } from "@/components/public/scroll-to-top";
 import { SiteFooter, SiteHeader } from "@/components/public/site-chrome";
 import { kindMeta } from "@/lib/provider-kinds";
@@ -74,14 +75,13 @@ export default async function ProviderPage({
 
       <div className="border-b border-border-warm bg-paper-muted">
         <div className="mx-auto flex w-full max-w-[1600px] flex-wrap items-center gap-5 px-4 py-8 sm:px-6 lg:px-8">
-          <span
-            className={cn(
-              "flex h-[4.5rem] w-[4.5rem] shrink-0 items-center justify-center rounded-3xl",
-              meta.chip,
-            )}
-          >
-            <meta.Icon className={cn("h-9 w-9", meta.glyph)} />
-          </span>
+          <ProviderAvatar
+            photoUrl={provider.photo_url}
+            kind={provider.kind}
+            name={provider.name}
+            className="h-[5.5rem] w-[5.5rem] rounded-2xl"
+            iconClassName="h-9 w-9"
+          />
 
           <div className="min-w-0 flex-1">
             <div className="flex flex-wrap items-center gap-2.5">

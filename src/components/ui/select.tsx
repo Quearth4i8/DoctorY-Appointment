@@ -17,9 +17,9 @@ const SelectTrigger = React.forwardRef<
   <SelectPrimitive.Trigger
     ref={ref}
     className={cn(
-      "flex h-11 w-full items-center justify-between gap-2 rounded-lg border border-input bg-card px-3.5 text-[0.95rem] shadow-inner-sm transition-all duration-150",
+      "flex h-11 w-full items-center justify-between gap-2 rounded-lg border border-input bg-card px-3.5 text-[0.95rem] shadow-card transition-all duration-base ease-spring",
       "data-[placeholder]:text-muted-foreground/70",
-      "hover:border-border/60 hover:bg-card",
+      "hover:border-primary/30 hover:shadow-card-hover",
       "focus:outline-none focus:border-primary focus:shadow-glow",
       "disabled:cursor-not-allowed disabled:opacity-50",
       "[&>span]:line-clamp-1 [&>span]:text-left",
@@ -44,7 +44,7 @@ const SelectContent = React.forwardRef<
       ref={ref}
       position={position}
       className={cn(
-        "relative z-50 max-h-72 min-w-[9rem] overflow-y-auto overflow-x-hidden rounded-xl border bg-popover p-1.5 text-popover-foreground shadow-modal scrollbar-slim",
+        "relative z-50 max-h-72 min-w-[9rem] overflow-y-auto overflow-x-hidden rounded-xl border border-border bg-popover p-1.5 text-popover-foreground shadow-modal scrollbar-slim",
         "data-[state=open]:animate-in data-[state=closed]:animate-out",
         "data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0",
         "data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95",
@@ -89,9 +89,9 @@ const SelectItem = React.forwardRef<
   <SelectPrimitive.Item
     ref={ref}
     className={cn(
-      "relative flex w-full cursor-pointer select-none items-center rounded-lg py-2 pl-3 pr-9 text-[0.95rem] outline-none transition-colors",
+      "relative flex w-full cursor-pointer select-none items-center rounded-md py-2 pl-3 pr-9 text-[0.95rem] outline-none transition-colors duration-fast",
       "focus:bg-accent focus:text-accent-foreground",
-      "data-[state=checked]:font-medium data-[state=checked]:text-primary",
+      "data-[state=checked]:bg-primary-soft data-[state=checked]:font-bold data-[state=checked]:text-primary-soft-foreground",
       "data-[disabled]:pointer-events-none data-[disabled]:opacity-50",
       className,
     )}

@@ -19,6 +19,9 @@ const PUBLIC_PREFIXES = [
   "/recherche", // annuaire search results
   "/etablissement", // annuaire profile — every kind of establishment
   "/gardes", // pharmacies on duty
+  "/annuaire", // the trade catalogue
+  "/a-propos", // what the site is
+  "/avis", // feedback about the site
   "/signaler", // report a wrong listing
   "/confidentialite", // privacy page
   "/api/public", // endpoints backing the public pages

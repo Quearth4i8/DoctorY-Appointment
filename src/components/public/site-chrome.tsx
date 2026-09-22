@@ -1,6 +1,8 @@
 import Image from "next/image";
 import Link from "next/link";
-import { Building2, Lock } from "lucide-react";
+
+import { ProMenu } from "@/components/public/pro-menu";
+import { SiteNav } from "@/components/public/site-nav";
 
 /**
  * Header and footer for the pages a patient sees. No session required.
@@ -13,33 +15,6 @@ import { Building2, Lock } from "lucide-react";
  * establishment, and some establishments have nothing to book at all. The CTA
  * belongs on a profile, where the booking mode is known.
  */
-
-const NAV = [
-  { href: "/recherche?kind=medecin", label: "Médecins" },
-  { href: "/recherche?kind=pharmacie", label: "Pharmacies" },
-  { href: "/recherche?kind=laboratoire", label: "Laboratoires" },
-  { href: "/recherche?kind=clinique", label: "Cliniques & hôpitaux" },
-  { href: "/gardes", label: "Gardes" },
-];
-
-/**
- * Placeholder until the locale is wired.
- *
- * Arabic is not a translation pass — it flips the whole layout, so it lands
- * with `dir="rtl"` and a locale segment, not with a dictionary. Showing the
- * control now and having it do nothing would be worse than not showing it, so
- * this renders as a static indicator and the switch arrives with the routing.
- */
-function LocaleBadge() {
-  return (
-    <span
-      title="L'arabe arrive avec la mise en miroir complète de l'interface."
-      className="hidden items-center rounded-lg bg-muted px-2.5 py-1.5 text-xs font-semibold text-muted-foreground sm:inline-flex"
-    >
-      FR
-    </span>
-  );
-}
 
 export function SiteHeader() {
   return (
@@ -57,41 +32,10 @@ export function SiteHeader() {
           <span className="text-base font-extrabold tracking-tight">DoctorY</span>
         </Link>
 
-        <nav className="hidden items-center gap-0.5 lg:flex">
-          {NAV.map(({ href, label }) => (
-            <Link
-              key={href}
-              href={href}
-              className="rounded-[0.625rem] px-3 py-2 text-sm font-medium text-muted-foreground transition-colors hover:bg-paper-muted hover:text-foreground"
-            >
-              {label}
-            </Link>
-          ))}
-        </nav>
+        <SiteNav />
 
         <div className="ml-auto flex items-center gap-2">
-          <LocaleBadge />
-
-          <Link
-            href="/pro"
-            className="flex h-10 items-center gap-2 rounded-xl border border-input px-3.5 text-sm font-semibold transition-colors hover:bg-paper-muted"
-          >
-            <Building2 className="h-4 w-4" />
-            <span className="hidden sm:inline">Espace professionnel</span>
-            <span className="sm:hidden">Pro</span>
-          </Link>
-
-          {/* Not a patient login — there is no patient account. Named for who
-              it belongs to, with a padlock, and styled down so it stops
-              competing with what a visitor actually came to do. */}
-          <Link
-            href="/login"
-            title="Réservé au secrétariat. Aucun compte n'est nécessaire pour demander un rendez-vous."
-            className="hidden h-10 items-center gap-2 rounded-xl px-3 text-sm font-medium text-muted-foreground transition-colors hover:bg-paper-muted hover:text-foreground md:flex"
-          >
-            <Lock className="h-3.5 w-3.5" />
-            Secrétariat
-          </Link>
+          <ProMenu />
         </div>
       </div>
     </header>
@@ -124,9 +68,9 @@ export function SiteFooter() {
           </div>
 
           <FooterColumn title="Trouver">
+            <FooterLink href="/annuaire">Tous les métiers</FooterLink>
             <FooterLink href="/recherche?kind=medecin">Médecins</FooterLink>
             <FooterLink href="/recherche?kind=pharmacie">Pharmacies</FooterLink>
-            <FooterLink href="/recherche?kind=laboratoire">Laboratoires</FooterLink>
             <FooterLink href="/gardes">Pharmacies de garde</FooterLink>
           </FooterColumn>
 
@@ -137,6 +81,8 @@ export function SiteFooter() {
           </FooterColumn>
 
           <FooterColumn title="À propos">
+            <FooterLink href="/a-propos">Comment ça marche</FooterLink>
+            <FooterLink href="/avis">Donner mon avis</FooterLink>
             <FooterLink href="/signaler">Signaler une erreur</FooterLink>
             <FooterLink href="/confidentialite">Confidentialité</FooterLink>
           </FooterColumn>

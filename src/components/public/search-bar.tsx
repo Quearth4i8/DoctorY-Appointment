@@ -1,12 +1,34 @@
 "use client";
 
-import { useRouter } from "next/navigation";
-import { useState } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
+import { useMemo, useState } from "react";
 import { MapPin, Search } from "lucide-react";
 
-import { KIND_TABS, kindMeta } from "@/lib/provider-kinds";
+import { AutocompleteInput, type ComboboxOption } from "@/components/ui/combobox";
+import { KIND_ORDER, KIND_TABS, kindMeta } from "@/lib/provider-kinds";
+import { ALL_CITY_OPTIONS, GOVERNORATES } from "@/lib/tunisia";
 import { cn } from "@/lib/utils";
 import type { ProviderKind } from "@/types";
+
+/**
+ * Everywhere worth typing into "Où".
+ *
+ * Governorates come first so that someone who means the whole region gets the
+ * region, not its capital — both are spelled "Sfax", and the caption is what
+ * tells them apart.
+ */
+/** Hoisted so the default prop is the SAME array every render, which is what
+ *  keeps the memo below from recomputing on every keystroke. */
+const NO_SPECIALTIES: { label: string; synonyms?: string[] }[] = [];
+
+const WHERE_OPTIONS: ComboboxOption[] = [
+  ...GOVERNORATES.map((g) => ({
+    value: g,
+    label: g,
+    hint: "Gouvernorat",
+  })),
+  ...ALL_CITY_OPTIONS,
+];
 
 /**
  * The annuaire's front door: what, where, and which trade.
@@ -21,51 +43,126 @@ export function SearchBar({
   defaultWhere = "",
   defaultKind = null,
   size = "lg",
+  /*
+   * The quick trade tabs.
+   *
+   * They earn their place on the landing page, where scoping before you type
+   * saves a trip. On the results page they are the third control for one
+   * decision — the header nav, these, and the filter rail's "Type
+   * d'établissement" all set the same thing — so that page turns them off and
+   * lets the rail own it.
+   */
+  showKinds = true,
+  /** Fill the container instead of sitting in a reading-width column. */
+  fullWidth = false,
+  /*
+   * The specialty taxonomy, for suggesting under "Qui ou quoi".
+   *
+   * Passed in rather than fetched here because this is a client component and
+   * the list lives in the database. Pages that have it already send it; the
+   * rest still get the trade names below, which always resolve to something.
+   */
+  specialties = NO_SPECIALTIES,
 }: {
   defaultQuery?: string;
   defaultWhere?: string;
   defaultKind?: ProviderKind | null;
   size?: "lg" | "sm";
+  showKinds?: boolean;
+  fullWidth?: boolean;
+  specialties?: { label: string; synonyms?: string[] }[];
 }) {
   const router = useRouter();
+  const current = useSearchParams();
   const [kind, setKind] = useState<ProviderKind | null>(defaultKind);
   const [q, setQ] = useState(defaultQuery);
   const [where, setWhere] = useState(defaultWhere);
 
+  /*
+   * Specialties first, trades after.
+   *
+   * Someone typing "card" means cardiologue, not "cabinet"; the trades are the
+   * safety net for an empty taxonomy, not the headline. Synonyms ride along as
+   * hidden keywords so "labo" reaches "Laboratoire d'analyses" and "coeur"
+   * reaches "Cardiologie".
+   */
+  const whatOptions = useMemo<ComboboxOption[]>(
+    () => [
+      ...specialties.map((s) => ({
+        value: s.label,
+        label: s.label,
+        hint: "Spécialité",
+        keywords: (s.synonyms ?? []).join(" "),
+      })),
+      ...KIND_ORDER.map((k) => {
+        const meta = kindMeta(k);
+        return {
+          value: meta.plural,
+          label: meta.plural,
+          hint: "Métier",
+          keywords: meta.label,
+        };
+      }),
+    ],
+    [specialties],
+  );
+
+  /*
+   * Rewrites only what this bar owns and leaves the rest of the URL alone.
+   *
+   * It used to build a fresh query string, which silently threw away every
+   * filter in the rail: set "ouvert maintenant" and "conventionné CNAM",
+   * correct a typo in the search box, and all of it was gone. The URL is the
+   * shared state here, so this edits it rather than replacing it.
+   */
   function submit(event: React.FormEvent) {
     event.preventDefault();
-    const params = new URLSearchParams();
-    if (q.trim()) params.set("q", q.trim());
-    if (where.trim()) params.set("ou", where.trim());
-    if (kind) params.set("kind", kind);
-    router.push(`/recherche?${params.toString()}`);
+    const next = new URLSearchParams(current.toString());
+
+    next.delete("q");
+    next.delete("ou");
+    if (q.trim()) next.set("q", q.trim());
+    if (where.trim()) next.set("ou", where.trim());
+
+    // Only touch `kind` when the tabs are actually on screen. With them
+    // hidden, the rail owns the trade filter — and it can hold several, which
+    // a single-value control here could only ever flatten to one.
+    if (showKinds) {
+      next.delete("kind");
+      if (kind) next.set("kind", kind);
+    }
+
+    const qs = next.toString();
+    router.push(qs ? `/recherche?${qs}` : "/recherche");
   }
 
   const tall = size === "lg";
 
   return (
     <div className="flex flex-col gap-4">
-      <div className="flex flex-wrap gap-1.5">
-        <KindTab active={kind === null} onClick={() => setKind(null)} label="Tout" />
-        {KIND_TABS.map((k) => {
-          const meta = kindMeta(k);
-          return (
-            <KindTab
-              key={k}
-              active={kind === k}
-              onClick={() => setKind(k)}
-              label={meta.label}
-              Icon={meta.Icon}
-            />
-          );
-        })}
-      </div>
+      {showKinds ? (
+        <div className="flex flex-wrap gap-1.5">
+          <KindTab active={kind === null} onClick={() => setKind(null)} label="Tout" />
+          {KIND_TABS.map((k) => {
+            const meta = kindMeta(k);
+            return (
+              <KindTab
+                key={k}
+                active={kind === k}
+                onClick={() => setKind(k)}
+                label={meta.label}
+                Icon={meta.Icon}
+              />
+            );
+          })}
+        </div>
+      ) : null}
 
       <form
         onSubmit={submit}
         className={cn(
           "flex items-center gap-1.5 rounded-2xl border border-border-warm bg-card p-2.5 shadow-card",
-          tall ? "max-w-[39rem]" : "max-w-[34rem]",
+          fullWidth ? "w-full" : tall ? "max-w-[39rem]" : "max-w-[34rem]",
         )}
       >
         <Field
@@ -74,6 +171,7 @@ export function SearchBar({
           placeholder="Cardiologue, pharmacie, NFS…"
           value={q}
           onChange={setQ}
+          options={whatOptions}
           icon={<Search className="h-[1.1rem] w-[1.1rem] text-muted-foreground" />}
           grow="flex-[1.3]"
         />
@@ -83,9 +181,10 @@ export function SearchBar({
         <Field
           id="q-ou"
           label="Où"
-          placeholder="Ville ou quartier"
+          placeholder="Ville ou gouvernorat"
           value={where}
           onChange={setWhere}
+          options={WHERE_OPTIONS}
           icon={<MapPin className="h-[1.1rem] w-[1.1rem] text-muted-foreground" />}
           grow="flex-1"
         />
@@ -140,6 +239,7 @@ function Field({
   placeholder,
   value,
   onChange,
+  options,
   icon,
   grow,
 }: {
@@ -148,6 +248,7 @@ function Field({
   placeholder: string;
   value: string;
   onChange: (v: string) => void;
+  options: readonly ComboboxOption[];
   icon: React.ReactNode;
   grow: string;
 }) {
@@ -161,12 +262,12 @@ function Field({
         >
           {label}
         </label>
-        <input
+        <AutocompleteInput
           id={id}
-          type="text"
           value={value}
+          onChange={onChange}
+          options={options}
           placeholder={placeholder}
-          onChange={(e) => onChange(e.target.value)}
           className="w-full border-0 bg-transparent p-0 text-[0.9rem] font-semibold outline-none placeholder:font-normal placeholder:text-muted-foreground/70"
         />
       </span>

@@ -110,7 +110,7 @@ export function SearchFilters({ counts }: { counts: Record<string, number> }) {
                 type="checkbox"
                 checked={on}
                 onChange={() => toggleMulti("kind", kind)}
-                className="h-[1.05rem] w-[1.05rem] shrink-0 accent-[hsl(var(--primary))]"
+                className="h-[1.05rem] w-[1.05rem] shrink-0"
               />
               <span
                 className={cn("flex-1 text-[0.82rem]", on ? "font-bold" : "font-medium")}

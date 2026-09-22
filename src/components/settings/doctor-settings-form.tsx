@@ -19,10 +19,13 @@ import {
 import { toast } from "sonner";
 
 import { Button } from "@/components/ui/button";
+import { Combobox } from "@/components/ui/combobox";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { createClient } from "@/lib/supabase/client";
 import { osmEmbedUrl, parseLatLng } from "@/lib/geo";
+import { SPECIALTY_OPTIONS } from "@/lib/specialties";
+import { ALL_CITY_OPTIONS } from "@/lib/tunisia";
 import { cn } from "@/lib/utils";
 import { DAY_LABELS, type DayHours, type Doctor, type Tariff } from "@/types";
 
@@ -246,10 +249,14 @@ export function DoctorSettingsForm({ doctor }: { doctor: Doctor }) {
               />
             </Row>
             <Row label="Spécialité">
-              <Input
+              <Combobox
                 value={profile.specialty}
-                onChange={(e) => setField("specialty", e.target.value)}
+                onChange={(v) => setField("specialty", v)}
+                options={SPECIALTY_OPTIONS}
+                allowCustom
                 placeholder="Médecine générale"
+                searchPlaceholder="Spécialité…"
+                emptyLabel="Pas dans la liste — tapez la vôtre"
               />
             </Row>
             <div className="sm:col-span-2">
@@ -290,9 +297,14 @@ export function DoctorSettingsForm({ doctor }: { doctor: Doctor }) {
               />
             </Row>
             <Row label="Ville">
-              <Input
+              <Combobox
                 value={profile.city}
-                onChange={(e) => setField("city", e.target.value)}
+                onChange={(v) => setField("city", v)}
+                options={ALL_CITY_OPTIONS}
+                allowCustom
+                placeholder="Choisir une ville"
+                searchPlaceholder="Ville ou délégation…"
+                emptyLabel="Aucune ville connue — tapez la vôtre"
               />
             </Row>
           </div>

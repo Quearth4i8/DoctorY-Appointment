@@ -8,6 +8,8 @@ import { LogoutButton } from "./logout-button";
 
 const TITLES: Record<string, string> = {
   "/admin": "Vue d'ensemble",
+  "/admin/demandes": "Demandes",
+  "/admin/etablissements": "Établissements",
   "/admin/comptes": "Comptes",
   "/admin/licences": "Licences",
 };

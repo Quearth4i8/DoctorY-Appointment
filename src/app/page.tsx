@@ -6,16 +6,21 @@ import {
   Clock,
   Cross,
   ShieldCheck,
-  Stethoscope,
   UserRound,
 } from "lucide-react";
 
+import { Reveal } from "@/components/public/reveal";
 import { ScrollToTop } from "@/components/public/scroll-to-top";
 import { SiteFooter, SiteHeader } from "@/components/public/site-chrome";
 import { ProviderCard } from "@/components/public/provider-card";
 import { SearchBar } from "@/components/public/search-bar";
 import { KIND_ORDER, kindMeta } from "@/lib/provider-kinds";
-import { countProvidersByKind, listOnDutyPharmacies, searchProviders } from "@/lib/providers";
+import {
+  countProvidersByKind,
+  listOnDutyPharmacies,
+  listSpecialties,
+  searchProviders,
+} from "@/lib/providers";
 import { cn } from "@/lib/utils";
 
 export const dynamic = "force-dynamic";
@@ -52,11 +57,12 @@ const SUGGESTIONS = [
 ];
 
 export default async function LandingPage() {
-  // Three independent reads; no reason to make the page wait for them in turn.
-  const [counts, onDuty, featured] = await Promise.all([
+  // Independent reads; no reason to make the page wait for them in turn.
+  const [counts, onDuty, featured, specialties] = await Promise.all([
     countProvidersByKind(),
     listOnDutyPharmacies(),
     searchProviders({ limit: 3 }),
+    listSpecialties(),
   ]);
 
   return (
@@ -66,11 +72,6 @@ export default async function LandingPage() {
       <main className="flex-1">
         <section className="mx-auto grid w-full max-w-[1600px] items-center gap-12 px-4 py-14 sm:px-6 lg:grid-cols-[minmax(0,1fr)_31rem] lg:px-8 lg:py-20">
           <div className="flex flex-col gap-6">
-            <span className="inline-flex w-fit items-center gap-2 rounded-full bg-accent px-3.5 py-1.5 text-xs font-bold text-accent-foreground">
-              <Stethoscope className="h-3.5 w-3.5" />
-              Confirmé par le secrétariat, jamais par un robot
-            </span>
-
             <h1 className="font-display text-[2.75rem] font-semibold leading-[1.02] tracking-[-0.025em] sm:text-[3.5rem]">
               Toute la santé,
               <br />
@@ -83,7 +84,7 @@ export default async function LandingPage() {
               rendez-vous quand c&apos;est possible.
             </p>
 
-            <SearchBar />
+            <SearchBar specialties={specialties} />
 
             <div className="flex flex-wrap items-center gap-2">
               <span className="text-[0.8rem] text-muted-foreground">
@@ -117,8 +118,9 @@ export default async function LandingPage() {
         {/* Pharmacies de garde. Placed above the fold on purpose: at 22:00 it
             is the only thing anyone opens this site for, and burying it under
             a doctor list would be optimising the page for the calm case. */}
-        <section className="mx-auto w-full max-w-[1600px] px-4 sm:px-6 lg:px-8">
-          <div className="flex flex-wrap items-center gap-5 rounded-3xl bg-foreground px-6 py-5 text-background">
+        <Reveal>
+          <section className="mx-auto w-full max-w-[1600px] px-4 sm:px-6 lg:px-8">
+            <div className="flex flex-wrap items-center gap-5 rounded-3xl bg-foreground px-6 py-5 text-background">
             <span className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-primary/20 text-primary">
               <Cross className="h-6 w-6" />
             </span>
@@ -148,39 +150,41 @@ export default async function LandingPage() {
 
               <Link
                 href="/gardes"
-                className="inline-flex h-11 items-center gap-2 rounded-xl bg-primary px-5 text-sm font-extrabold text-primary-foreground transition-all hover:brightness-110"
+                className="group/cta inline-flex h-11 items-center gap-2 rounded-xl bg-primary px-5 text-sm font-extrabold text-primary-foreground transition-all duration-base ease-spring hover:brightness-110"
               >
                 Toutes les gardes
-                <ArrowRight className="h-4 w-4" />
+                <ArrowRight className="h-4 w-4 transition-transform duration-base ease-spring group-hover/cta:translate-x-0.5" />
               </Link>
+              </div>
             </div>
-          </div>
-        </section>
+          </section>
+        </Reveal>
 
         {/* Par métier */}
+        <Reveal>
         <section className="mx-auto w-full max-w-[1600px] px-4 py-16 sm:px-6 lg:px-8">
           <div className="flex flex-wrap items-end justify-between gap-4">
             <h2 className="font-display text-3xl font-semibold tracking-[-0.02em]">
               Par métier
             </h2>
             <Link
-              href="/recherche"
-              className="inline-flex h-10 items-center gap-2 rounded-xl border border-border-warm bg-card px-4 text-sm font-bold transition-colors hover:bg-paper-muted"
+              href="/annuaire"
+              className="inline-flex h-10 items-center gap-2 rounded-xl border border-border-warm bg-card px-4 text-sm font-bold transition-colors duration-base hover:bg-paper-muted"
             >
-              Explorer l&apos;annuaire
+              Voir les 12 métiers
               <ArrowRight className="h-4 w-4" />
             </Link>
           </div>
 
           <div className="mt-8 grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-6">
-            {KIND_ORDER.map((kind) => {
+            {KIND_ORDER.slice(0, 6).map((kind) => {
               const meta = kindMeta(kind);
               const n = counts[kind] ?? 0;
               return (
                 <Link
                   key={kind}
                   href={`/recherche?kind=${kind}`}
-                  className="group flex flex-col gap-3 rounded-2xl border border-border-warm bg-card p-4 transition-all duration-200 hover:-translate-y-0.5 hover:shadow-card-hover"
+                  className="group flex flex-col gap-3 rounded-xl border border-border-warm bg-card p-4 transition-all duration-slow ease-spring hover:-translate-y-1 hover:border-primary/30 hover:shadow-lifted"
                 >
                   <span
                     className={cn(
@@ -203,8 +207,10 @@ export default async function LandingPage() {
             })}
           </div>
         </section>
+        </Reveal>
 
         {featured.length > 0 ? (
+          <Reveal>
           <section className="mx-auto w-full max-w-[1600px] px-4 pb-16 sm:px-6 lg:px-8">
             <h2 className="font-display text-3xl font-semibold tracking-[-0.02em]">
               Près de chez vous
@@ -215,9 +221,11 @@ export default async function LandingPage() {
               ))}
             </div>
           </section>
+          </Reveal>
         ) : null}
 
         {/* Reassurance */}
+        <Reveal>
         <section className="border-y border-border-warm bg-paper-muted">
           <div className="mx-auto grid w-full max-w-[1600px] gap-6 px-4 py-14 sm:px-6 md:grid-cols-3 lg:px-8">
             {POINTS.map(({ icon: Icon, title, text }) => (
@@ -235,8 +243,10 @@ export default async function LandingPage() {
             ))}
           </div>
         </section>
+        </Reveal>
 
         {/* Professionnels */}
+        <Reveal>
         <section className="mx-auto w-full max-w-[1600px] px-4 py-16 sm:px-6 lg:px-8">
           <div className="flex flex-wrap items-center gap-8 rounded-3xl border border-border-warm bg-paper-muted px-7 py-7">
             <div className="flex min-w-[20rem] flex-1 flex-col gap-2">
@@ -266,6 +276,7 @@ export default async function LandingPage() {
             </div>
           </div>
         </section>
+        </Reveal>
       </main>
 
       <SiteFooter />

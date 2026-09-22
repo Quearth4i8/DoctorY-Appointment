@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { BadgeCheck, MapPin, Moon } from "lucide-react";
 
+import { ProviderAvatar } from "@/components/public/provider-avatar";
 import { kindMeta, primaryAction } from "@/lib/provider-kinds";
 import { cn } from "@/lib/utils";
 import { formatMillimes, type ProviderSummary } from "@/types";
@@ -49,19 +50,19 @@ export function ProviderCard({
     <Link
       href={`/etablissement/${provider.slug}`}
       className={cn(
-        "group flex gap-4 rounded-2xl border bg-card p-4 shadow-card transition-all duration-200",
-        "hover:-translate-y-0.5 hover:shadow-card-hover sm:p-5",
+        "group flex gap-4 rounded-xl border bg-card p-4 shadow-card",
+        "transition-all duration-slow ease-spring",
+        "hover:-translate-y-1 hover:border-primary/30 hover:shadow-lifted sm:p-5",
         provider.is_sponsored ? "border-primary/40" : "border-border-warm",
       )}
     >
-      <span
-        className={cn(
-          "flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl",
-          meta.chip,
-        )}
-      >
-        <meta.Icon className={cn("h-6 w-6", meta.glyph)} />
-      </span>
+      <ProviderAvatar
+        photoUrl={provider.photo_url}
+        kind={provider.kind}
+        name={provider.name}
+        className="h-14 w-14 rounded-xl"
+        iconClassName="h-6 w-6"
+      />
 
       <div className="flex min-w-0 flex-1 flex-col gap-2">
         <div className="flex flex-wrap items-center gap-x-2 gap-y-1">

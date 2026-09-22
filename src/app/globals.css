@@ -70,7 +70,9 @@ body {
     --input: 158 13% 84%;
     --ring: 173 77% 24%;
 
-    --radius: 0.75rem;
+    /* 10px. The whole radius scale is derived from this, so sharpening the
+       product is a one-line change rather than a sweep through every file. */
+    --radius: 0.625rem;
 
     /*
      * Status. Named for what they mean, not what colour they are, because the
@@ -207,6 +209,51 @@ body {
     font-variation-settings: "opsz" 96;
   }
 
+  /*
+   * Tracking follows size, automatically.
+   *
+   * Letterforms need less air the larger they get — type drawn for reading at
+   * 15px looks loose and unresolved at 40px. Setting this on the elements
+   * rather than leaving it to whoever writes the class is what keeps the
+   * hierarchy consistent across a hundred components, and it is most of what
+   * people mean when they say a typeface "follows the design".
+   */
+  h1,
+  .text-display {
+    letter-spacing: -0.028em;
+  }
+  h2 {
+    letter-spacing: -0.021em;
+  }
+  h3,
+  h4 {
+    letter-spacing: -0.014em;
+  }
+
+  /* Anchor jumps (the agenda's #creneaux, for one) glide instead of teleport —
+     unless the reader has asked for less motion, in which case they teleport. */
+  html {
+    scroll-behavior: smooth;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    html {
+      scroll-behavior: auto;
+    }
+
+    /*
+     * The honest way to honour the setting: stop the motion, keep the result.
+     * Zeroing the duration would leave anything animating from opacity 0 stuck
+     * invisible, so the animations are cancelled outright instead.
+     */
+    *,
+    *::before,
+    *::after {
+      animation: none !important;
+      transition-duration: 0.01ms !important;
+    }
+  }
+
   /* Tabular figures keep times, distances and dossier numbers from jittering
      as they change. */
   .tnum {
@@ -234,7 +281,135 @@ body {
   }
 }
 
+/*
+ * Native form controls, drawn rather than inherited.
+ *
+ * A browser's own select arrow, checkbox and radio are the loudest "this is a
+ * form from 2009" signal an interface can give — and they ignore the theme
+ * entirely, so they stay light grey inside a dark panel. `appearance: none`
+ * hands them over, and the marks below are drawn to the same tokens as
+ * everything else.
+ *
+ * Deliberately element selectors in @layer base: every native control in the
+ * app picks this up without a class, including the ones inside dialogs and
+ * any added later. Tailwind utilities still win on specificity, so a size or
+ * colour written at the call site keeps overriding it.
+ */
+@layer base {
+  select {
+    appearance: none;
+    -webkit-appearance: none;
+    background-image: url("data:image/svg+xml;charset=utf-8,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%235F716C' stroke-width='2.2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E");
+    background-repeat: no-repeat;
+    background-position: right 0.7rem center;
+    background-size: 1rem;
+    /* Room for the chevron, so a long option never runs under it. */
+    padding-right: 2.4rem;
+  }
+
+  /* The chevron is a fixed-colour image, so dark mode needs its own. */
+  .dark select {
+    background-image: url("data:image/svg+xml;charset=utf-8,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%239CAFA9' stroke-width='2.2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E");
+  }
+
+  select:disabled {
+    opacity: 0.55;
+    cursor: not-allowed;
+  }
+
+  input[type="checkbox"],
+  input[type="radio"] {
+    appearance: none;
+    -webkit-appearance: none;
+    flex: none;
+    display: inline-block;
+    vertical-align: middle;
+    width: 1.15rem;
+    height: 1.15rem;
+    border: 1.5px solid hsl(var(--input));
+    background-color: hsl(var(--card));
+    background-repeat: no-repeat;
+    background-position: center;
+    border-radius: calc(var(--radius) - 4px);
+    cursor: pointer;
+    transition:
+      background-color 120ms cubic-bezier(0.4, 0, 0.2, 1),
+      border-color 120ms cubic-bezier(0.4, 0, 0.2, 1),
+      box-shadow 120ms cubic-bezier(0.4, 0, 0.2, 1);
+  }
+
+  input[type="radio"] {
+    border-radius: 9999px;
+  }
+
+  input[type="checkbox"]:hover:not(:disabled),
+  input[type="radio"]:hover:not(:disabled) {
+    border-color: hsl(var(--primary) / 0.5);
+  }
+
+  input[type="checkbox"]:checked {
+    background-color: hsl(var(--primary));
+    border-color: hsl(var(--primary));
+    background-size: 78%;
+    background-image: url("data:image/svg+xml;charset=utf-8,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23ffffff' stroke-width='3.4' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m5 12.5 4.5 4.5L19 7.5'/%3E%3C/svg%3E");
+  }
+
+  /* `--primary` is a bright teal in dark mode, so the tick goes dark to keep
+     its contrast rather than staying white out of habit. */
+  .dark input[type="checkbox"]:checked {
+    background-image: url("data:image/svg+xml;charset=utf-8,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23061110' stroke-width='3.4' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m5 12.5 4.5 4.5L19 7.5'/%3E%3C/svg%3E");
+  }
+
+  /* The dot is the border closing in, so it inherits the token and needs no
+     second image to keep in step with the theme. */
+  input[type="radio"]:checked {
+    border-color: hsl(var(--primary));
+    border-width: 0.36rem;
+  }
+
+  input[type="checkbox"]:focus-visible,
+  input[type="radio"]:focus-visible,
+  select:focus-visible {
+    outline: none;
+    box-shadow: 0 0 0 2px hsl(var(--background)), 0 0 0 4px hsl(var(--ring) / 0.55);
+  }
+
+  input[type="checkbox"]:disabled,
+  input[type="radio"]:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+  }
+
+  /* An indeterminate box is neither on nor off; a dash says so. */
+  input[type="checkbox"]:indeterminate {
+    background-color: hsl(var(--primary));
+    border-color: hsl(var(--primary));
+    background-size: 68%;
+    background-image: url("data:image/svg+xml;charset=utf-8,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23ffffff' stroke-width='3.4' stroke-linecap='round'%3E%3Cpath d='M6 12h12'/%3E%3C/svg%3E");
+  }
+}
+
 @layer utilities {
+  /*
+   * Scroll-reveal, driven by a data attribute the Reveal component flips.
+   *
+   * The hidden state is only applied once JS has marked the element, so a
+   * page without JS — or one where the observer never fires — renders fully
+   * visible rather than blank. Content that depends on a script to be seen is
+   * content that sometimes is not.
+   */
+  [data-reveal="hidden"] {
+    opacity: 0;
+    transform: translateY(14px);
+  }
+  [data-reveal="shown"] {
+    opacity: 1;
+    transform: translateY(0);
+    transition:
+      opacity 0.55s cubic-bezier(0.16, 1, 0.3, 1),
+      transform 0.55s cubic-bezier(0.16, 1, 0.3, 1);
+  }
+
   /* Thin, unobtrusive scrollbars for the calendar grid and long lists */
   .scrollbar-slim {
     scrollbar-width: thin;
