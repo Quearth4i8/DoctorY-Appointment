@@ -2,6 +2,7 @@ import Link from "next/link";
 import { BadgeCheck, MapPin, Moon } from "lucide-react";
 
 import { ProviderAvatar } from "@/components/public/provider-avatar";
+import { RatingStars } from "@/components/public/rating-stars";
 import { kindMeta, primaryAction } from "@/lib/provider-kinds";
 import { cn } from "@/lib/utils";
 import { formatMillimes, type ProviderSummary } from "@/types";
@@ -96,6 +97,11 @@ export function ProviderCard({
         </div>
 
         <div className="flex flex-wrap items-center gap-x-3.5 gap-y-1 text-[0.8rem] text-muted-foreground">
+          <RatingStars
+            average={provider.rating_avg}
+            count={provider.rating_count}
+          />
+
           {provider.specialties.length > 0 ? (
             <span className="font-semibold text-primary">
               {provider.specialties.slice(0, 2).join(" · ")}

@@ -56,7 +56,7 @@ export function SearchBar({
   /** Fill the container instead of sitting in a reading-width column. */
   fullWidth = false,
   /*
-   * The specialty taxonomy, for suggesting under "Qui ou quoi".
+   * The specialty taxonomy, for suggesting under "Que cherchez-vous ?".
    *
    * Passed in rather than fetched here because this is a client component and
    * the list lives in the database. Pages that have it already send it; the
@@ -178,8 +178,8 @@ export function SearchBar({
       >
         <Field
           id="q-quoi"
-          label="Qui ou quoi"
-          placeholder="Cardiologue, pharmacie, NFS…"
+          label="Que cherchez-vous ?"
+          placeholder="Cardiologue, diabétologue, pharmacie…"
           value={q}
           onChange={setQ}
           options={whatOptions}

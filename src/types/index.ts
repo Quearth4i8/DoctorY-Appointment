@@ -300,6 +300,11 @@ export type Provider = {
 
   is_published: boolean;
 
+  /** Mean of the stars given, or null while unrated. Never 0 for unrated. */
+  rating_avg: number | null;
+  /** How many attended appointments have been rated. */
+  rating_count: number;
+
   /**
    * The `doctors` row this establishment was backfilled from, or null when it
    * was created natively.
@@ -343,6 +348,14 @@ export type ProviderSummary = Pick<
 > & {
   verified: boolean;
   specialties: string[];
+  /**
+   * Mean of the stars this establishment has been given, or null while it has
+   * none. Null is not zero — an unrated practice must never render as a bad
+   * one.
+   */
+  rating_avg: number | null;
+  /** How many attended appointments have been rated. */
+  rating_count: number;
   /** Kilometres from the search origin, when one was given. */
   distance_km: number | null;
   /** Cheapest published service, in millimes. */

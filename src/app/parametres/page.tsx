@@ -7,7 +7,8 @@ import { AppShell } from "@/components/app-shell";
 import { DoctorSettingsForm } from "@/components/settings/doctor-settings-form";
 import { PairingCard } from "@/components/settings/pairing-card";
 import { getDoctorForStaff } from "@/lib/doctors";
-import { getStaff } from "@/lib/supabase/server";
+import { listSpecialties } from "@/lib/providers";
+import { createClient, getStaff } from "@/lib/supabase/server";
 
 export const dynamic = "force-dynamic";
 
@@ -21,6 +22,21 @@ export default async function ParametresPage() {
 
   // Bound staff edit their own doctor's page, nobody else's.
   const doctor = await getDoctorForStaff(staff.doctor_id);
+
+  // The closed taxonomy, narrowed to what a cabinet may claim — the form must
+  // not offer "Optique" to a médecin. Current picks come from the database
+  // through the same staff binding the setter uses, so the boxes ticked here
+  // are always the ones that will be saved.
+  const supabase = createClient();
+  const [allSpecialties, { data: mine }] = await Promise.all([
+    listSpecialties(),
+    supabase.rpc("get_doctor_specialties"),
+  ]);
+
+  const specialtyOptions = allSpecialties.filter((s) =>
+    s.kinds.includes("medecin"),
+  );
+  const selectedSpecialties = Array.isArray(mine) ? (mine as string[]) : [];
 
   return (
     <AppShell staff={staff}>
@@ -46,7 +62,11 @@ export default async function ParametresPage() {
 
         {doctor ? (
           <>
-            <DoctorSettingsForm doctor={doctor} />
+            <DoctorSettingsForm
+              doctor={doctor}
+              specialtyOptions={specialtyOptions}
+              selectedSpecialties={selectedSpecialties}
+            />
             <PairingCard />
           </>
         ) : (

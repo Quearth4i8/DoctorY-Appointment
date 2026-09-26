@@ -24,10 +24,15 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { createClient } from "@/lib/supabase/client";
 import { osmEmbedUrl, parseLatLng } from "@/lib/geo";
-import { SPECIALTY_OPTIONS } from "@/lib/specialties";
 import { ALL_CITY_OPTIONS } from "@/lib/tunisia";
 import { cn } from "@/lib/utils";
-import { DAY_LABELS, type DayHours, type Doctor, type Tariff } from "@/types";
+import {
+  DAY_LABELS,
+  type DayHours,
+  type Doctor,
+  type Specialty,
+  type Tariff,
+} from "@/types";
 
 /** Two ranges per day (morning / afternoon) covers how a practice actually runs. */
 type DayForm = { open: boolean; ranges: [string, string][] };
@@ -56,7 +61,20 @@ function toHours(days: DayForm[]): DayHours[] {
     .filter((d) => d.ranges.length > 0);
 }
 
-export function DoctorSettingsForm({ doctor }: { doctor: Doctor }) {
+/** How many a single practice may claim — mirrors the cap in the RPC. */
+const MAX_SPECIALTIES = 8;
+
+export function DoctorSettingsForm({
+  doctor,
+  /** The closed taxonomy, already narrowed to what a cabinet may claim. */
+  specialtyOptions,
+  /** Slugs this practice offers today. */
+  selectedSpecialties,
+}: {
+  doctor: Doctor;
+  specialtyOptions: Specialty[];
+  selectedSpecialties: string[];
+}) {
   const router = useRouter();
 
   // No `title`: it is "Dr" for every profile this app holds, filled in on the
@@ -73,6 +91,8 @@ export function DoctorSettingsForm({ doctor }: { doctor: Doctor }) {
     phone: doctor.phone,
     email: doctor.email,
   });
+  const [specialties, setSpecialties] =
+    useState<string[]>(selectedSpecialties);
   const [days, setDays] = useState<DayForm[]>(() => toDayForms(doctor.hours));
   const [tariffs, setTariffs] = useState<Tariff[]>(doctor.tariffs);
   const [lat, setLat] = useState(doctor.latitude?.toString() ?? "");
@@ -136,10 +156,16 @@ export function DoctorSettingsForm({ doctor }: { doctor: Doctor }) {
     }
     setSaving(true);
     const supabase = createClient();
+
+    // `specialty` is no longer written from here: set_doctor_specialties owns
+    // it, so that the free-text summary and provider_specialties can never
+    // disagree about what this practice does.
+    const { specialty: _ignored, ...editable } = profile;
+
     const { error } = await supabase
       .from("doctors")
       .update({
-        ...profile,
+        ...editable,
         full_name: profile.full_name.trim(),
         latitude: preview ? preview.lat : null,
         longitude: preview ? preview.lng : null,
@@ -160,6 +186,20 @@ export function DoctorSettingsForm({ doctor }: { doctor: Doctor }) {
       toast.error("Enregistrement impossible.");
       return;
     }
+
+    // Separate call because this one crosses into `provider_specialties`,
+    // which staff cannot write directly.
+    const { data: verdict, error: specError } = await supabase.rpc(
+      "set_doctor_specialties",
+      { p_slugs: specialties },
+    );
+
+    if (specError || !(verdict as { ok?: boolean } | null)?.ok) {
+      toast.error("Profil enregistré, mais les spécialités n'ont pas pu l'être.");
+      router.refresh();
+      return;
+    }
+
     toast.success("Profil enregistré.");
     router.refresh();
   }
@@ -248,17 +288,44 @@ export function DoctorSettingsForm({ doctor }: { doctor: Doctor }) {
                 onChange={(e) => setField("full_name", e.target.value)}
               />
             </Row>
-            <Row label="Spécialité">
-              <Combobox
-                value={profile.specialty}
-                onChange={(v) => setField("specialty", v)}
-                options={SPECIALTY_OPTIONS}
-                allowCustom
-                placeholder="Médecine générale"
-                searchPlaceholder="Spécialité…"
-                emptyLabel="Pas dans la liste — tapez la vôtre"
-              />
-            </Row>
+            <div className="sm:col-span-2">
+              <Label className="text-sm font-medium">Spécialités</Label>
+              <p className="mt-1 text-xs leading-relaxed text-muted-foreground">
+                Ce que les patients peuvent chercher pour vous trouver. Un
+                cabinet peut en exercer plusieurs — cochez-les toutes
+                ({MAX_SPECIALTIES} au maximum).
+              </p>
+              <div className="mt-2.5 flex flex-wrap gap-1.5">
+                {specialtyOptions.map((s) => {
+                  const on = specialties.includes(s.slug);
+                  const full = !on && specialties.length >= MAX_SPECIALTIES;
+                  return (
+                    <button
+                      key={s.slug}
+                      type="button"
+                      aria-pressed={on}
+                      disabled={full}
+                      onClick={() =>
+                        setSpecialties((prev) =>
+                          prev.includes(s.slug)
+                            ? prev.filter((x) => x !== s.slug)
+                            : [...prev, s.slug],
+                        )
+                      }
+                      className={cn(
+                        "rounded-full border px-3 py-1.5 text-[0.8rem] font-medium transition-colors",
+                        on
+                          ? "border-primary bg-primary text-primary-foreground"
+                          : "border-border/70 bg-card hover:bg-muted",
+                        full && "cursor-not-allowed opacity-40",
+                      )}
+                    >
+                      {s.label}
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
             <div className="sm:col-span-2">
               <Row label="Présentation">
                 <textarea

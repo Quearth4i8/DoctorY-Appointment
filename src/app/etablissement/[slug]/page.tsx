@@ -19,6 +19,8 @@ import { AvailabilityGrid } from "@/components/public/availability-grid";
 import { Breadcrumbs, type Crumb } from "@/components/public/breadcrumbs";
 import { EmailAction, PhoneAction } from "@/components/public/contact-action";
 import { ProviderAvatar } from "@/components/public/provider-avatar";
+import { RatingForm } from "@/components/public/rating-form";
+import { RatingStars } from "@/components/public/rating-stars";
 import { ScrollToTop } from "@/components/public/scroll-to-top";
 import { SiteFooter, SiteHeader } from "@/components/public/site-chrome";
 import { kindMeta } from "@/lib/provider-kinds";
@@ -130,6 +132,11 @@ export default async function ProviderPage({
 
               <div className="mt-2 flex flex-wrap items-center gap-x-4 gap-y-1.5 text-sm text-foreground/75">
                 <span className={cn("font-bold", meta.glyph)}>{meta.label}</span>
+                <RatingStars
+                  size="lg"
+                  average={provider.rating_avg}
+                  count={provider.rating_count}
+                />
                 {provider.specialties.length > 0 ? (
                   <span className="inline-flex items-center gap-1.5">
                     <Stethoscope className="h-4 w-4" />
@@ -192,6 +199,19 @@ export default async function ProviderPage({
                 {provider.bio}
               </p>
             </Panel>
+          ) : null}
+
+          {/* Only where an attendance can actually be checked. Without a
+              `legacy_doctor_id` there are no appointments behind this
+              establishment, so every submission would be refused — better to
+              not offer the form than to offer one that always says no. */}
+          {provider.legacy_doctor_id ? (
+            <section id="noter" className="scroll-mt-24">
+              <RatingForm
+                providerSlug={provider.slug}
+                providerName={provider.name}
+              />
+            </section>
           ) : null}
 
           {provider.practitioners.length > 0 ? (

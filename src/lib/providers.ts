@@ -25,7 +25,8 @@ import type {
 const SUMMARY_FIELDS =
   "id, kind, slug, name, photo_url, address, city, latitude, longitude, phone, " +
   "booking_mode, accepts_cnam, third_party_payer, wheelchair_access, " +
-  "accepts_new_patients, open_24_7, has_emergency, plan, plan_expires_at, verified_at";
+  "accepts_new_patients, open_24_7, has_emergency, plan, plan_expires_at, verified_at, " +
+  "rating_avg, rating_count";
 
 const FULL_FIELDS =
   SUMMARY_FIELDS +
@@ -75,6 +76,9 @@ function toSummary(row: Row, at: Date): ProviderSummary {
     is_sponsored: sponsoredNow(row, at),
     verified: row.verified_at !== null && row.verified_at !== undefined,
     specialties: [],
+    // `num` keeps null as null: an unrated establishment must not arrive as 0.
+    rating_avg: num(row.rating_avg),
+    rating_count: Number(row.rating_count ?? 0),
     distance_km: null,
     from_millimes: null,
     on_duty_until: null,
@@ -465,6 +469,9 @@ export async function getProviderBySlug(slug: string): Promise<Provider | null> 
     plan: str(row.plan, "gratuit") as ProviderPlan,
     plan_expires_at: row.plan_expires_at ? str(row.plan_expires_at) : null,
     is_published: bool(row.is_published),
+
+    rating_avg: num(row.rating_avg),
+    rating_count: Number(row.rating_count ?? 0),
 
     // An embed carries no WHERE or ORDER BY of its own, so the filtering and
     // ordering the separate queries used to do happens here instead. Dropping
