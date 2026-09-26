@@ -22,6 +22,10 @@ import { Button } from "@/components/ui/button";
 import { Combobox } from "@/components/ui/combobox";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import {
+  SpecialtyTagInput,
+  type SpecialtyValue,
+} from "@/components/settings/specialty-tag-input";
 import { createClient } from "@/lib/supabase/client";
 import { osmEmbedUrl, parseLatLng } from "@/lib/geo";
 import { ALL_CITY_OPTIONS } from "@/lib/tunisia";
@@ -73,7 +77,8 @@ export function DoctorSettingsForm({
 }: {
   doctor: Doctor;
   specialtyOptions: Specialty[];
-  selectedSpecialties: string[];
+  /** What this practice offers today: taxonomy slugs plus its own entries. */
+  selectedSpecialties: SpecialtyValue;
 }) {
   const router = useRouter();
 
@@ -92,7 +97,7 @@ export function DoctorSettingsForm({
     email: doctor.email,
   });
   const [specialties, setSpecialties] =
-    useState<string[]>(selectedSpecialties);
+    useState<SpecialtyValue>(selectedSpecialties);
   const [days, setDays] = useState<DayForm[]>(() => toDayForms(doctor.hours));
   const [tariffs, setTariffs] = useState<Tariff[]>(doctor.tariffs);
   const [lat, setLat] = useState(doctor.latitude?.toString() ?? "");
@@ -191,7 +196,7 @@ export function DoctorSettingsForm({
     // which staff cannot write directly.
     const { data: verdict, error: specError } = await supabase.rpc(
       "set_doctor_specialties",
-      { p_slugs: specialties },
+      { p_slugs: specialties.slugs, p_custom: specialties.custom },
     );
 
     if (specError || !(verdict as { ok?: boolean } | null)?.ok) {
@@ -292,38 +297,15 @@ export function DoctorSettingsForm({
               <Label className="text-sm font-medium">Spécialités</Label>
               <p className="mt-1 text-xs leading-relaxed text-muted-foreground">
                 Ce que les patients peuvent chercher pour vous trouver. Un
-                cabinet peut en exercer plusieurs — cochez-les toutes
-                ({MAX_SPECIALTIES} au maximum).
+                cabinet peut en exercer plusieurs.
               </p>
-              <div className="mt-2.5 flex flex-wrap gap-1.5">
-                {specialtyOptions.map((s) => {
-                  const on = specialties.includes(s.slug);
-                  const full = !on && specialties.length >= MAX_SPECIALTIES;
-                  return (
-                    <button
-                      key={s.slug}
-                      type="button"
-                      aria-pressed={on}
-                      disabled={full}
-                      onClick={() =>
-                        setSpecialties((prev) =>
-                          prev.includes(s.slug)
-                            ? prev.filter((x) => x !== s.slug)
-                            : [...prev, s.slug],
-                        )
-                      }
-                      className={cn(
-                        "rounded-full border px-3 py-1.5 text-[0.8rem] font-medium transition-colors",
-                        on
-                          ? "border-primary bg-primary text-primary-foreground"
-                          : "border-border/70 bg-card hover:bg-muted",
-                        full && "cursor-not-allowed opacity-40",
-                      )}
-                    >
-                      {s.label}
-                    </button>
-                  );
-                })}
+              <div className="mt-2.5">
+                <SpecialtyTagInput
+                  options={specialtyOptions}
+                  value={specialties}
+                  onChange={setSpecialties}
+                  max={MAX_SPECIALTIES}
+                />
               </div>
             </div>
             <div className="sm:col-span-2">

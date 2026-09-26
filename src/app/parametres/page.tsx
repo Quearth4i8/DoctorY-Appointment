@@ -36,7 +36,14 @@ export default async function ParametresPage() {
   const specialtyOptions = allSpecialties.filter((s) =>
     s.kinds.includes("medecin"),
   );
-  const selectedSpecialties = Array.isArray(mine) ? (mine as string[]) : [];
+  // The RPC returns { slugs, custom }. Anything else — an older function
+  // still deployed, or a failed call — degrades to an empty picker rather
+  // than breaking the settings page.
+  const raw = (mine ?? {}) as { slugs?: unknown; custom?: unknown };
+  const selectedSpecialties = {
+    slugs: Array.isArray(raw.slugs) ? (raw.slugs as string[]) : [],
+    custom: Array.isArray(raw.custom) ? (raw.custom as string[]) : [],
+  };
 
   return (
     <AppShell staff={staff}>
