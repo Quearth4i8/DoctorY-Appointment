@@ -108,9 +108,21 @@ export function SignupForm() {
 
     // Check the key before creating anything, so a typo does not leave a
     // half-made account behind that can never become staff.
-    const { data: valid } = await supabase.rpc("key_is_valid", {
+    const { data: valid, error: keyError } = await supabase.rpc("key_is_valid", {
       p_key: key.trim(),
     });
+
+    // A failed CALL is not a rejected key. Discarding this error meant a
+    // missing migration, a dropped grant or a stale PostgREST schema cache all
+    // surfaced as "check it with your doctor" — sending people to re-read a key
+    // that was correct all along, with nothing anywhere saying what broke.
+    if (keyError) {
+      setLoading(false);
+      return setError(
+        `Vérification de la clé impossible : ${keyError.message}. Prévenez votre médecin.`,
+      );
+    }
+
     if (valid !== true) {
       setLoading(false);
       return setError(
