@@ -3,6 +3,7 @@ import Link from "next/link";
 import { SearchX } from "lucide-react";
 
 import { ProviderCard } from "@/components/public/provider-card";
+import { QuickFilters } from "@/components/public/quick-filters";
 import { SearchBar } from "@/components/public/search-bar";
 import { SearchFilters } from "@/components/public/search-filters";
 import { ScrollToTop } from "@/components/public/scroll-to-top";
@@ -33,14 +34,41 @@ function many(v: string | string[] | undefined): string[] {
 
 const KIND_SET = new Set<string>(KIND_ORDER);
 
+/** A finite number inside a range, or undefined — never NaN. */
+function num(v: string | string[] | undefined, min: number, max: number) {
+  if (typeof v !== "string" || v.trim() === "") return undefined;
+  const n = Number(v);
+  return Number.isFinite(n) && n >= min && n <= max ? n : undefined;
+}
+
 function toSearchParams(raw: RawParams): ProviderSearchParams {
   const kinds = many(raw.kind).filter((k) => KIND_SET.has(k)) as ProviderKind[];
   const q = typeof raw.q === "string" ? raw.q : undefined;
   const city = typeof raw.ou === "string" ? raw.ou : undefined;
 
+  /*
+   * "Autour de moi", finally plumbed through.
+   *
+   * searchProviders has always taken a `near` box and sorted by real
+   * distance — it was simply never given one, because no screen read a
+   * position out of the URL. Coordinates live in the URL like every other
+   * filter so the result stays shareable and back-button-able.
+   *
+   * Both halves are required: a lone latitude is a malformed URL, not a
+   * location, and silently searching from the equator would be worse than
+   * ignoring it.
+   */
+  const lat = num(raw.lat, -90, 90);
+  const lng = num(raw.lng, -180, 180);
+  const near =
+    lat !== undefined && lng !== undefined
+      ? { lat, lng, radiusKm: num(raw.rayon, 1, 100) ?? 5 }
+      : undefined;
+
   return {
     q,
     city,
+    near,
     kinds: kinds.length ? kinds : undefined,
     openNow: raw.ouvert === "1",
     cnam: raw.cnam === "1",
@@ -63,6 +91,7 @@ function heading(params: ProviderSearchParams): string {
         : params.q
           ? `Résultats pour « ${params.q} »`
           : "Tous les établissements";
+  if (params.near) return `${what} autour de vous`;
   return params.city ? `${what} à ${params.city}` : what;
 }
 
@@ -112,6 +141,8 @@ export default async function SearchPage({
             defaultKind={firstKind}
             specialties={specialties}
           />
+
+          <QuickFilters counts={counts} />
         </div>
       </div>
 

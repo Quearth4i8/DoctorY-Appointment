@@ -63,6 +63,15 @@ export function SearchBar({
    * rest still get the trade names below, which always resolve to something.
    */
   specialties = NO_SPECIALTIES,
+  /*
+   * Extra classes for the bar itself, not the wrapper.
+   *
+   * The landing hero sits the bar on a tinted wash where `shadow-card`'s
+   * hairline disappears, so that one page lifts it. Everywhere else the
+   * default is what keeps the control looking the same on /recherche as it
+   * does on a profile.
+   */
+  className,
 }: {
   defaultQuery?: string;
   defaultWhere?: string;
@@ -71,6 +80,7 @@ export function SearchBar({
   showKinds?: boolean;
   fullWidth?: boolean;
   specialties?: { label: string; synonyms?: string[] }[];
+  className?: string;
 }) {
   const router = useRouter();
   const current = useSearchParams();
@@ -163,6 +173,7 @@ export function SearchBar({
         className={cn(
           "flex items-center gap-1.5 rounded-2xl border border-border-warm bg-card p-2.5 shadow-card",
           fullWidth ? "w-full" : tall ? "max-w-[39rem]" : "max-w-[34rem]",
+          className,
         )}
       >
         <Field

@@ -7,13 +7,17 @@ import {
   CalendarDays,
   Globe,
   Info,
+  ArrowUpRight,
   Mail,
   MapPin,
   Phone,
   Stethoscope,
+  type LucideIcon,
 } from "lucide-react";
 
 import { AvailabilityGrid } from "@/components/public/availability-grid";
+import { Breadcrumbs, type Crumb } from "@/components/public/breadcrumbs";
+import { EmailAction, PhoneAction } from "@/components/public/contact-action";
 import { ProviderAvatar } from "@/components/public/provider-avatar";
 import { ScrollToTop } from "@/components/public/scroll-to-top";
 import { SiteFooter, SiteHeader } from "@/components/public/site-chrome";
@@ -69,64 +73,107 @@ export default async function ProviderPage({
   const meta = kindMeta(provider.kind);
   const place = [provider.address, provider.city].filter(Boolean).join(", ");
 
+  /*
+   * Catalogue → métier → spécialité → this establishment.
+   *
+   * Every step is a search the visitor can actually run: /recherche has no
+   * dedicated specialty parameter, but its free-text `q` is what the search
+   * bar itself puts specialty names into, so "Diabétologie" widens to the
+   * same results it would from the box. The specialty step is dropped rather
+   * than faked when the listing has none.
+   */
+  const trail: Crumb[] = [
+    { label: "Médecins & pharmacies", href: "/annuaire" },
+    { label: meta.plural, href: `/recherche?kind=${provider.kind}` },
+    ...(provider.specialties.length > 0
+      ? [
+          {
+            label: provider.specialties[0].label,
+            href: `/recherche?kind=${provider.kind}&q=${encodeURIComponent(
+              provider.specialties[0].label,
+            )}`,
+          },
+        ]
+      : []),
+    { label: provider.name },
+  ];
+
   return (
     <div className="flex min-h-screen flex-col bg-paper">
       <SiteHeader />
 
       <div className="border-b border-border-warm bg-paper-muted">
-        <div className="mx-auto flex w-full max-w-[1600px] flex-wrap items-center gap-5 px-4 py-8 sm:px-6 lg:px-8">
-          <ProviderAvatar
-            photoUrl={provider.photo_url}
-            kind={provider.kind}
-            name={provider.name}
-            className="h-[5.5rem] w-[5.5rem] rounded-2xl"
-            iconClassName="h-9 w-9"
-          />
+        <div className="mx-auto w-full max-w-[1600px] px-4 pb-8 pt-5 sm:px-6 lg:px-8">
+          <Breadcrumbs items={trail} className="mb-5" />
 
-          <div className="min-w-0 flex-1">
-            <div className="flex flex-wrap items-center gap-2.5">
-              <h1 className="font-display text-[2.1rem] font-semibold leading-tight tracking-[-0.022em]">
-                {provider.name}
-              </h1>
-              {provider.verified_at ? (
-                <span className="inline-flex items-center gap-1.5 rounded-full bg-card px-2.5 py-1 text-[0.7rem] font-extrabold text-info-foreground">
-                  <BadgeCheck className="h-3.5 w-3.5" />
-                  Fiche vérifiée
-                </span>
-              ) : null}
+          <div className="flex flex-wrap items-center gap-5">
+            <ProviderAvatar
+              photoUrl={provider.photo_url}
+              kind={provider.kind}
+              name={provider.name}
+              className="h-[5.5rem] w-[5.5rem] rounded-2xl"
+              iconClassName="h-9 w-9"
+            />
+
+            <div className="min-w-0 flex-1">
+              <div className="flex flex-wrap items-center gap-2.5">
+                <h1 className="font-display text-[2.1rem] font-semibold leading-tight tracking-[-0.022em]">
+                  {provider.name}
+                </h1>
+                {provider.verified_at ? (
+                  <span className="inline-flex items-center gap-1.5 rounded-full bg-card px-2.5 py-1 text-[0.7rem] font-extrabold text-info-foreground">
+                    <BadgeCheck className="h-3.5 w-3.5" />
+                    Fiche vérifiée
+                  </span>
+                ) : null}
+              </div>
+
+              <div className="mt-2 flex flex-wrap items-center gap-x-4 gap-y-1.5 text-sm text-foreground/75">
+                <span className={cn("font-bold", meta.glyph)}>{meta.label}</span>
+                {provider.specialties.length > 0 ? (
+                  <span className="inline-flex items-center gap-1.5">
+                    <Stethoscope className="h-4 w-4" />
+                    {provider.specialties.map((s) => s.label).join(" · ")}
+                  </span>
+                ) : null}
+                {place ? (
+                  <span className="inline-flex items-center gap-1.5">
+                    <MapPin className="h-4 w-4" />
+                    {place}
+                  </span>
+                ) : null}
+              </div>
             </div>
 
-            <div className="mt-2 flex flex-wrap items-center gap-x-4 gap-y-1.5 text-sm text-foreground/75">
-              <span className={cn("font-bold", meta.glyph)}>{meta.label}</span>
-              {provider.specialties.length > 0 ? (
-                <span className="inline-flex items-center gap-1.5">
-                  <Stethoscope className="h-4 w-4" />
-                  {provider.specialties.map((s) => s.label).join(" · ")}
+            {/* Right-hand end of the band: status, then how to reach them.
+                Getting in touch is what most visitors to a profile do next, so
+                it gets controls of its own rather than two more entries in the
+                grey meta line above. Stacked, and stretched to full width below
+                sm — where they take their own row and double as tap targets. */}
+            <div className="flex w-full shrink-0 flex-col items-stretch gap-2 sm:ml-auto sm:w-auto sm:items-end">
+              {provider.open_24_7 || provider.has_emergency ? (
+                <span className="inline-flex items-center justify-center gap-2 rounded-full bg-card px-4 py-2 text-sm font-bold text-ok-foreground sm:self-end">
+                  <span className="h-2 w-2 rounded-full bg-ok" />
+                  {provider.has_emergency ? "Urgences 24 h/24" : "Ouvert 24 h/24"}
                 </span>
               ) : null}
-              {place ? (
-                <span className="inline-flex items-center gap-1.5">
-                  <MapPin className="h-4 w-4" />
-                  {place}
-                </span>
-              ) : null}
-              {provider.phone ? (
-                <span className="font-mono">{provider.phone}</span>
-              ) : null}
-            </div>
-          </div>
 
-          {provider.open_24_7 || provider.has_emergency ? (
-            <span className="inline-flex shrink-0 items-center gap-2 rounded-full bg-card px-4 py-2 text-sm font-bold text-ok-foreground">
-              <span className="h-2 w-2 rounded-full bg-ok" />
-              {provider.has_emergency ? "Urgences 24 h/24" : "Ouvert 24 h/24"}
-            </span>
-          ) : null}
+              {provider.phone ? <PhoneAction phone={provider.phone} /> : null}
+              {provider.email ? <EmailAction email={provider.email} /> : null}
+            </div>
+            </div>
         </div>
       </div>
 
       <main className="mx-auto grid w-full max-w-[1600px] flex-1 items-start gap-6 px-4 py-8 sm:px-6 lg:grid-cols-[minmax(0,1fr)_23rem] lg:px-8">
-        <div className="flex flex-col gap-5">
+        {/* `min-w-0` is load-bearing, not tidying.
+            A grid item's min-width defaults to `auto`, so this column refused
+            to shrink below the min-content width of the slot table inside it
+            — eight 104px day columns. The table's own `overflow-x-auto` never
+            got a chance: the whole page grew to 846px instead and every phone
+            got a horizontally scrolling document, with the header band's
+            background ending mid-screen. */}
+        <div className="flex min-w-0 flex-col gap-5">
           {/* The slot picker, not a button that promises one. Rendered only
               when there is a real agenda behind it: `legacy_doctor_id` is what
               resolves to the appointments, and without it every opening hour
@@ -263,60 +310,71 @@ export default async function ProviderPage({
           ) : null}
 
           <Panel title="Coordonnées">
-            <ul className="flex flex-col gap-3 text-[0.85rem]">
+            {/* Every line here is somewhere to go, so every line is a row you
+                can press rather than a label with a link buried in it. The
+                previous version had the address as plain text with a pill
+                hanging underneath it, which broke the icon column halfway
+                down the list and made one entry look like a different kind of
+                thing from the other three. */}
+            <ul className="-mx-2 flex flex-col gap-0.5">
               {place ? (
-                <li className="flex items-start gap-2.5">
-                  <MapPin className="mt-0.5 h-4 w-4 shrink-0 text-primary" />
-                  <span className="leading-relaxed">
-                    {provider.address}
-                    {provider.postcode || provider.city ? (
-                      <>
-                        <br />
-                        {[provider.postcode, provider.city].filter(Boolean).join(" ")}
-                      </>
-                    ) : null}
+                <ContactRow icon={MapPin} href={directionsUrl(provider)} external>
+                  <span className="block leading-relaxed">{provider.address}</span>
+                  {provider.postcode || provider.city ? (
+                    <span className="block leading-relaxed text-muted-foreground">
+                      {[provider.postcode, provider.city].filter(Boolean).join(" ")}
+                    </span>
+                  ) : null}
+                  <span className="mt-0.5 block text-[0.7rem] font-bold text-primary">
+                    Voir l&apos;itinéraire
                   </span>
-                </li>
+                </ContactRow>
               ) : null}
+
               {provider.phone ? (
-                <li className="flex items-center gap-2.5">
-                  <Phone className="h-4 w-4 shrink-0 text-primary" />
-                  <a
-                    href={`tel:${provider.phone.replace(/\s/g, "")}`}
-                    className="font-mono hover:underline"
-                  >
-                    {provider.phone}
-                  </a>
-                </li>
+                <ContactRow
+                  icon={Phone}
+                  href={`tel:${provider.phone.replace(/[^\d+]/g, "")}`}
+                >
+                  <span className="block font-mono font-semibold tnum">
+                    {provider.phone.trim()}
+                  </span>
+                  <span className="block text-[0.7rem] text-muted-foreground">
+                    Appeler
+                  </span>
+                </ContactRow>
               ) : null}
+
               {provider.email ? (
-                <li className="flex items-center gap-2.5">
-                  <Mail className="h-4 w-4 shrink-0 text-primary" />
-                  <a href={`mailto:${provider.email}`} className="truncate hover:underline">
-                    {provider.email}
-                  </a>
-                </li>
+                <ContactRow icon={Mail} href={`mailto:${provider.email.trim()}`}>
+                  <span className="block truncate font-semibold">
+                    {provider.email.trim()}
+                  </span>
+                  <span className="block text-[0.7rem] text-muted-foreground">
+                    Écrire un email
+                  </span>
+                </ContactRow>
               ) : null}
+
               {provider.website ? (
-                <li className="flex items-center gap-2.5">
-                  <Globe className="h-4 w-4 shrink-0 text-primary" />
-                  <a
-                    href={provider.website}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="truncate hover:underline"
-                  >
-                    {provider.website.replace(/^https?:\/\//, "")}
-                  </a>
-                </li>
+                <ContactRow icon={Globe} href={provider.website} external>
+                  <span className="block truncate font-semibold">
+                    {provider.website.replace(/^https?:\/\//, "").replace(/\/$/, "")}
+                  </span>
+                  <span className="block text-[0.7rem] text-muted-foreground">
+                    Site web
+                  </span>
+                </ContactRow>
               ) : null}
             </ul>
 
-            <div className="mt-4 flex flex-wrap gap-1.5">
-              {provider.accepts_cnam ? <Tag>Conventionné CNAM</Tag> : null}
-              {provider.third_party_payer ? <Tag>Tiers payant</Tag> : null}
-              {provider.wheelchair_access ? <Tag>Accès PMR</Tag> : null}
-            </div>
+            {provider.accepts_cnam || provider.third_party_payer || provider.wheelchair_access ? (
+              <div className="mt-4 flex flex-wrap gap-1.5 border-t border-border-warm pt-4">
+                {provider.accepts_cnam ? <Tag>Conventionné CNAM</Tag> : null}
+                {provider.third_party_payer ? <Tag>Tiers payant</Tag> : null}
+                {provider.wheelchair_access ? <Tag>Accès PMR</Tag> : null}
+              </div>
+            ) : null}
           </Panel>
         </aside>
       </main>
@@ -427,6 +485,43 @@ function Hours({ ranges }: { ranges: OpeningRange[] }) {
         );
       })}
     </ul>
+  );
+}
+
+/**
+ * One pressable line of the Coordonnées panel.
+ *
+ * `external` is what decides the arrow and the `target`, so a row that leaves
+ * the site says so and a row that hands off to the phone's own dialler or
+ * mail app does not open a dead tab behind it.
+ */
+function ContactRow({
+  icon: Icon,
+  href,
+  external,
+  children,
+}: {
+  icon: LucideIcon;
+  href: string;
+  external?: boolean;
+  children: React.ReactNode;
+}) {
+  return (
+    <li>
+      <a
+        href={href}
+        {...(external ? { target: "_blank", rel: "noopener noreferrer" } : {})}
+        className="group flex items-start gap-3 rounded-xl px-2 py-2.5 transition-colors duration-base hover:bg-paper-muted"
+      >
+        <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-primary-soft text-primary-soft-foreground transition-colors duration-base group-hover:bg-primary group-hover:text-primary-foreground">
+          <Icon className="h-4 w-4" />
+        </span>
+
+        <span className="min-w-0 flex-1 text-[0.85rem]">{children}</span>
+
+        <ArrowUpRight className="mt-2.5 h-4 w-4 shrink-0 text-muted-foreground/40 transition-all duration-base ease-spring group-hover:translate-x-0.5 group-hover:text-primary" />
+      </a>
+    </li>
   );
 }
 

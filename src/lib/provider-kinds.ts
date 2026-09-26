@@ -40,36 +40,6 @@ export type KindMeta = {
   glyph: string;
 };
 
-/**
- * How the twelve trades are grouped on /annuaire.
- *
- * By what a visitor came to do, not by anything administrative — someone
- * needing blood work does not think "biologie médicale", they think "I have a
- * prescription for analyses".
- */
-export const KIND_GROUPS: { title: string; note: string; kinds: ProviderKind[] }[] = [
-  {
-    title: "Praticiens",
-    note: "Consulter quelqu'un, au cabinet ou chez vous.",
-    kinds: ["medecin", "dentiste", "sage_femme", "kinesitherapie", "infirmier"],
-  },
-  {
-    title: "Cliniques & hôpitaux",
-    note: "Plusieurs spécialités au même endroit, et les urgences.",
-    kinds: ["clinique", "hopital"],
-  },
-  {
-    title: "Analyses & imagerie",
-    note: "Ce qu'une ordonnance vous envoie faire.",
-    kinds: ["laboratoire", "imagerie"],
-  },
-  {
-    title: "Pharmacies & équipement",
-    note: "Sans rendez-vous — horaires, gardes et itinéraire.",
-    kinds: ["pharmacie", "parapharmacie", "opticien"],
-  },
-];
-
 const CARE = { chip: "bg-primary-soft", glyph: "text-primary-soft-foreground" };
 const RETAIL = { chip: "bg-info-soft", glyph: "text-info-foreground" };
 const ANALYSIS = { chip: "bg-lab-soft", glyph: "text-lab-foreground" };

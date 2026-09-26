@@ -30,8 +30,11 @@ export function ProMenu() {
     <DropdownMenu>
       <DropdownMenuTrigger className="group flex h-10 items-center gap-2 rounded-xl border border-input px-3.5 text-sm font-semibold transition-colors hover:bg-paper-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/60 data-[state=open]:bg-paper-muted">
         <Building2 className="h-4 w-4 text-muted-foreground" />
-        <span className="hidden sm:inline">Professionnels</span>
-        <span className="sm:hidden">Pro</span>
+        {/* The building icon stays, and the menu opens on "Vous exercez
+            dans la santé ?", because "Connexion" alone invites a patient to
+            look for an account that does not exist. The label says what the
+            control does; the icon and the heading say whose it is. */}
+        <span>Connexion</span>
         <ChevronDown className="h-3.5 w-3.5 text-muted-foreground transition-transform duration-200 group-data-[state=open]:rotate-180" />
       </DropdownMenuTrigger>
 

@@ -50,7 +50,12 @@ export function ProviderCard({
     <Link
       href={`/etablissement/${provider.slug}`}
       className={cn(
-        "group flex gap-4 rounded-xl border bg-card p-4 shadow-card",
+        // `min-w-0` because this is a grid item, and a grid item refuses by
+        // default to shrink below its min-content width — which the `truncate`
+        // name below fixes at the full untruncated string, since truncation
+        // implies `white-space: nowrap`. Without it the card pushes its track
+        // wider than the phone and the whole page scrolls sideways.
+        "group flex min-w-0 gap-4 rounded-xl border bg-card p-4 shadow-card",
         "transition-all duration-slow ease-spring",
         "hover:-translate-y-1 hover:border-primary/30 hover:shadow-lifted sm:p-5",
         provider.is_sponsored ? "border-primary/40" : "border-border-warm",
@@ -65,7 +70,7 @@ export function ProviderCard({
       />
 
       <div className="flex min-w-0 flex-1 flex-col gap-2">
-        <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
+        <div className="flex min-w-0 flex-wrap items-center gap-x-2 gap-y-1">
           <span className="truncate text-base font-bold tracking-tight">
             {provider.name}
           </span>

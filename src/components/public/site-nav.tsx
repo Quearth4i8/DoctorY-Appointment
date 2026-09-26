@@ -30,8 +30,8 @@ const NAV: NavItem[] = [
   { href: "/", label: "Accueil" },
   // Search and profiles are the annuaire being used, so they keep it lit
   // rather than leaving the reader with nothing marked mid-journey.
-  { href: "/annuaire", label: "Annuaire", also: ["/recherche", "/etablissement"] },
-  { href: "/gardes", label: "Gardes" },
+  { href: "/annuaire", label: "Médecins & pharmacies", also: ["/recherche", "/etablissement"] },
+  { href: "/gardes", label: "Pharmacie de garde" },
   { href: "/a-propos", label: "À propos" },
 ];
 
