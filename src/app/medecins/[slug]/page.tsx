@@ -14,6 +14,7 @@ import {
 import { SiteFooter, SiteHeader } from "@/components/public/site-chrome";
 import { AvailabilityGrid } from "@/components/public/availability-grid";
 import { getDoctorBySlug } from "@/lib/doctors";
+import { formatPhone, splitPhones, telHref } from "@/lib/phones";
 import { initials } from "@/lib/avatar";
 import { directionsUrl, osmEmbedUrl } from "@/lib/geo";
 import type { DayHours } from "@/types";
@@ -148,17 +149,14 @@ export default async function DoctorPage({
             {doctor.phone || doctor.email || place ? (
               <Panel title="Contact">
                 <ul className="flex flex-col gap-3 text-sm">
-                  {doctor.phone ? (
-                    <li className="flex items-center gap-2.5 text-slate-600">
+                  {splitPhones(doctor.phone).map((phone) => (
+                    <li key={phone} className="flex items-center gap-2.5 text-slate-600">
                       <Phone className="h-4 w-4 shrink-0 text-slate-400" />
-                      <a
-                        href={`tel:${doctor.phone}`}
-                        className="tabular-nums hover:text-teal-700"
-                      >
-                        {doctor.phone}
+                      <a href={telHref(phone)} className="tabular-nums hover:text-teal-700">
+                        {formatPhone(phone)}
                       </a>
                     </li>
-                  ) : null}
+                  ))}
                   {doctor.email ? (
                     <li className="flex items-center gap-2.5 text-slate-600">
                       <Mail className="h-4 w-4 shrink-0 text-slate-400" />

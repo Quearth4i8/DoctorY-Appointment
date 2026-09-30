@@ -4,6 +4,7 @@ import { Cross, MapPin, Moon, Phone } from "lucide-react";
 
 import { ScrollToTop } from "@/components/public/scroll-to-top";
 import { SiteFooter, SiteHeader } from "@/components/public/site-chrome";
+import { splitPhones, telHref } from "@/lib/phones";
 import { listOnDutyPharmacies } from "@/lib/providers";
 
 export const dynamic = "force-dynamic";
@@ -108,9 +109,9 @@ export default async function GardesPage() {
                     <MapPin className="h-4 w-4" />
                     Itinéraire
                   </Link>
-                  {p.phone ? (
+                  {splitPhones(p.phone)[0] ? (
                     <a
-                      href={`tel:${p.phone.replace(/\s/g, "")}`}
+                      href={telHref(splitPhones(p.phone)[0])}
                       aria-label={`Appeler ${p.name}`}
                       className="inline-flex h-11 w-[3.25rem] items-center justify-center rounded-xl border border-input bg-card transition-colors hover:bg-paper-muted"
                     >

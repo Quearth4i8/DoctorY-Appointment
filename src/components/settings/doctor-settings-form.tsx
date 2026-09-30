@@ -28,6 +28,7 @@ import {
 } from "@/components/settings/specialty-tag-input";
 import { createClient } from "@/lib/supabase/client";
 import { osmEmbedUrl, parseLatLng } from "@/lib/geo";
+import { joinPhones, splitPhones } from "@/lib/phones";
 import { ALL_CITY_OPTIONS } from "@/lib/tunisia";
 import { cn } from "@/lib/utils";
 import {
@@ -100,6 +101,12 @@ export function DoctorSettingsForm({
     useState<SpecialtyValue>(selectedSpecialties);
   const [days, setDays] = useState<DayForm[]>(() => toDayForms(doctor.hours));
   const [tariffs, setTariffs] = useState<Tariff[]>(doctor.tariffs);
+  // One field per number; saved back into the single `phone` column joined
+  // with " / " (see lib/phones). Always at least one row to type into.
+  const [phones, setPhones] = useState<string[]>(() => {
+    const list = splitPhones(doctor.phone);
+    return list.length ? list : [""];
+  });
   const [lat, setLat] = useState(doctor.latitude?.toString() ?? "");
   const [lng, setLng] = useState(doctor.longitude?.toString() ?? "");
   const [mapInput, setMapInput] = useState("");
@@ -171,6 +178,7 @@ export function DoctorSettingsForm({
       .from("doctors")
       .update({
         ...editable,
+        phone: joinPhones(phones),
         full_name: profile.full_name.trim(),
         latitude: preview ? preview.lat : null,
         longitude: preview ? preview.lng : null,
@@ -324,13 +332,44 @@ export function DoctorSettingsForm({
 
         <Card icon={Phone} title="Contact" hint="Comment le cabinet est joignable.">
           <div className="flex flex-col gap-4">
-            <Row label="Téléphone">
-              <Input
-                value={profile.phone}
-                onChange={(e) => setField("phone", e.target.value)}
-                inputMode="tel"
-                className="tnum"
-              />
+            <Row label={phones.length > 1 ? "Téléphones" : "Téléphone"}>
+              <div className="flex flex-col gap-2">
+                {phones.map((value, i) => (
+                  <div key={i} className="flex items-center gap-2">
+                    <Input
+                      value={value}
+                      onChange={(e) =>
+                        setPhones((list) => list.map((p, j) => (j === i ? e.target.value : p)))
+                      }
+                      inputMode="tel"
+                      placeholder="+216 XX XXX XXX"
+                      className="tnum"
+                      aria-label={`Téléphone ${i + 1}`}
+                    />
+                    {phones.length > 1 ? (
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="icon"
+                        className="shrink-0"
+                        onClick={() => setPhones((list) => list.filter((_, j) => j !== i))}
+                        aria-label={`Retirer le téléphone ${i + 1}`}
+                      >
+                        <Trash2 className="h-4 w-4 text-muted-foreground" />
+                      </Button>
+                    ) : null}
+                  </div>
+                ))}
+                {phones.length < 4 ? (
+                  <button
+                    type="button"
+                    onClick={() => setPhones((list) => [...list, ""])}
+                    className="inline-flex w-fit items-center gap-1.5 rounded-md px-1 py-1 text-sm font-medium text-primary transition-colors hover:text-primary/80"
+                  >
+                    <Plus className="h-3.5 w-3.5" /> Ajouter un numéro
+                  </button>
+                ) : null}
+              </div>
             </Row>
             <Row label="Email">
               <Input

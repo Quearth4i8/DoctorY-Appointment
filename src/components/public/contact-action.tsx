@@ -1,6 +1,7 @@
 import { Mail, Phone, type LucideIcon } from "lucide-react";
 
 import { cn } from "@/lib/utils";
+import { formatPhone, telHref } from "@/lib/phones";
 
 /**
  * A phone number or an email address, as a button that hands the visitor to
@@ -78,10 +79,10 @@ export function PhoneAction({
 
   return (
     <ContactAction
-      value={number}
+      value={formatPhone(number)}
       // Spaces and dashes are for reading; the dialler wants digits and a
       // leading +.
-      href={`tel:${number.replace(/[^\d+]/g, "")}`}
+      href={telHref(number)}
       glyph={Phone}
       action="Appeler"
       mono

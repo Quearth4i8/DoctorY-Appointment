@@ -25,6 +25,7 @@ import { RatingStars } from "@/components/public/rating-stars";
 import { ScrollToTop } from "@/components/public/scroll-to-top";
 import { SiteFooter, SiteHeader } from "@/components/public/site-chrome";
 import { kindMeta } from "@/lib/provider-kinds";
+import { formatPhone, splitPhones, telHref } from "@/lib/phones";
 import { getProviderBySlug } from "@/lib/providers";
 import { cn } from "@/lib/utils";
 import {
@@ -75,6 +76,7 @@ export default async function ProviderPage({
 
   const meta = kindMeta(provider.kind);
   const place = [provider.address, provider.city].filter(Boolean).join(", ");
+  const phones = splitPhones(provider.phone);
   // The live slot grid is on the page, so the sidebar leads with the map
   // instead of a booking card that would only point back at the grid.
   const showMap = provider.booking_mode === "agenda" && provider.legacy_doctor_id !== null;
@@ -187,7 +189,11 @@ export default async function ProviderPage({
                 </span>
               ) : null}
 
-              {provider.phone ? <PhoneAction phone={provider.phone} /> : null}
+              {/* One button per number — a practice often has a landline
+                  and a mobile, typed into one field as "A / B". */}
+              {phones.map((phone) => (
+                <PhoneAction key={phone} phone={phone} />
+              ))}
               {provider.email ? <EmailAction email={provider.email} /> : null}
             </div>
             </div>
@@ -380,19 +386,16 @@ export default async function ProviderPage({
                 </ContactRow>
               ) : null}
 
-              {provider.phone ? (
-                <ContactRow
-                  icon={Phone}
-                  href={`tel:${provider.phone.replace(/[^\d+]/g, "")}`}
-                >
+              {phones.map((phone) => (
+                <ContactRow key={phone} icon={Phone} href={telHref(phone)}>
                   <span className="block font-mono font-semibold tnum">
-                    {provider.phone.trim()}
+                    {formatPhone(phone)}
                   </span>
                   <span className="block text-[0.7rem] text-muted-foreground">
                     Appeler
                   </span>
                 </ContactRow>
-              ) : null}
+              ))}
 
               {provider.email ? (
                 <ContactRow icon={Mail} href={`mailto:${provider.email.trim()}`}>
@@ -458,9 +461,9 @@ function ActionCard({ provider }: { provider: Provider }) {
           <MapPin className="h-4 w-4" />
           Ouvrir l&apos;itinéraire
         </Link>
-        {provider.phone ? (
+        {splitPhones(provider.phone)[0] ? (
           <a
-            href={`tel:${provider.phone.replace(/\s/g, "")}`}
+            href={telHref(splitPhones(provider.phone)[0])}
             className="inline-flex h-11 items-center justify-center gap-2 rounded-xl border border-input bg-card text-[0.9rem] font-bold transition-colors hover:bg-paper-muted"
           >
             <Phone className="h-4 w-4" />
