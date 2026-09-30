@@ -10,6 +10,7 @@ import {
   ChevronLeft,
   ChevronRight,
   Inbox,
+  Stethoscope,
   Users,
   X,
 } from "lucide-react";
@@ -23,6 +24,7 @@ const LINKS = [
   { href: "/agenda", label: "Agenda", icon: CalendarDays },
   { href: "/patients", label: "Patients", icon: Users },
   { href: "/demandes", label: "Demandes", icon: Inbox, counted: true },
+  { href: "/parametres", label: "Détails du médecin", icon: Stethoscope },
 ] as const;
 
 /**

@@ -38,7 +38,7 @@ function ContactAction({
       href={href}
       title={value}
       className={cn(
-        "group inline-flex shrink-0 items-center justify-center gap-2.5 rounded-full border border-border-warm bg-card py-1.5 pl-1.5 pr-4 shadow-card",
+        "group inline-flex shrink-0 items-center justify-start gap-2.5 rounded-full border border-border-warm bg-card py-1.5 pl-1.5 pr-4 shadow-card",
         "transition-all duration-slow ease-spring hover:-translate-y-0.5 hover:border-primary/30 hover:shadow-lifted",
         "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-paper-muted",
         className,

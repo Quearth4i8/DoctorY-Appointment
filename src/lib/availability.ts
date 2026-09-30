@@ -71,12 +71,19 @@ export function buildAvailability({
   return days.map((day) => {
     const ranges = byDay.get(isoDay(day)) ?? [];
     const slots: PublicSlot[] = [];
+    const seen = new Set<number>();
 
     for (const [from, to] of ranges) {
       const startMin = minutesOf(from);
       const endMin = minutesOf(to);
 
-      for (let m = startMin; m + slotMinutes <= endMin; m += slotMinutes) {
+      // The end of a range is the doctor's LAST available time, not the time
+      // his last appointment must be over by: "09:00 – 12:00" offers 12:00.
+      // `seen` keeps two touching ranges (…–12:00, 12:00–…) from both
+      // offering the shared minute.
+      for (let m = startMin; m <= endMin; m += slotMinutes) {
+        if (seen.has(m)) continue;
+        seen.add(m);
         const slotStart = new Date(day);
         slotStart.setHours(0, 0, 0, 0);
         slotStart.setMinutes(m);

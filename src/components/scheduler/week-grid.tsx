@@ -282,22 +282,25 @@ export function WeekGrid({
       onDragEnd={handleDragEnd}
       onDragCancel={() => setActiveId(null)}
     >
-      <div className="overflow-x-auto scrollbar-slim rounded-2xl border border-border/70 bg-card shadow-card">
+      {/* The card is the scroll box for BOTH axes, capped to the viewport.
+          It has to be: `overflow-x-auto` alone already makes an element a
+          scroll container in CSS, so a day row trying to stick to the page
+          got measured from the card's own top instead — it sat a header's
+          height down inside the card, over the first rows of the day, with an
+          empty band above it. Scrolling inside the card, the row sticks at
+          top-0 and the hours at left-0, like any calendar. */}
+      <div className="max-h-[calc(100dvh-var(--app-header-h)-2rem)] overflow-auto scrollbar-slim rounded-2xl border border-border/70 bg-card shadow-card">
         <div style={{ minWidth }}>
-          {/* Header row: day names.
-
-              It parks under the console's top bar, not at the top of the
-              window. This row only scrolls vertically with the PAGE — the
-              wrapper above it scrolls sideways and nothing else — so `top-0`
-              resolved against the viewport and slid the weekday names straight
-              over the header, dragging the gutter's grey up with them. */}
+          {/* Header row: day names. Opaque — the tint is layered over the
+              card colour rather than being see-through — so appointments
+              scrolling underneath stay hidden instead of showing blurred. */}
           <div
             style={{ gridTemplateColumns: columns }}
-            className="sticky top-[var(--app-header-h)] z-20 grid border-b border-border bg-muted/50 backdrop-blur-sm"
+            className="sticky top-0 z-20 grid border-b border-border bg-card bg-gradient-to-b from-muted/50 to-muted/50"
           >
             {/* Corner. Sits above the gutter so neither scroll axis reveals a
                 gap where the two sticky edges meet. */}
-            <div className="sticky left-0 z-40 border-r border-border bg-muted/50 backdrop-blur-sm" />
+            <div className="sticky left-0 z-40 border-r border-border bg-card bg-gradient-to-b from-muted/50 to-muted/50" />
             {days.map((day) => {
               const past = isPastDay(day);
               const today = isToday(day);
@@ -346,7 +349,7 @@ export function WeekGrid({
                 hours, below the day row (z-20) so the corner still wins where
                 the two sticky edges cross — and below the console header,
                 which it used to tie with and beat on document order alone. */}
-            <div className="sticky left-0 z-[15] border-r border-border bg-muted/40">
+            <div className="sticky left-0 z-[15] border-r border-border bg-card bg-gradient-to-b from-muted/40 to-muted/40">
               {slots.map((m, i) => (
                 <div
                   key={m}
@@ -359,8 +362,8 @@ export function WeekGrid({
                         "absolute right-2.5 text-[0.7rem] font-medium tabular-nums text-muted-foreground/80",
                         // Every hour label straddles its gridline. The first one
                         // has no row above it to straddle into: half of it would
-                        // land outside the grid, where the clipped container and
-                        // the sticky header between them swallow it. Sit it just
+                        // land outside the grid, where the scroll box and the
+                        // sticky header between them swallow it. Sit it just
                         // under the top edge instead.
                         i === 0 ? "top-1" : "-top-2",
                       )}

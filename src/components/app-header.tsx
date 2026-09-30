@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { ChevronDown, Home, LogOut, Menu, Settings, UserRound } from "lucide-react";
+import { ChevronDown, Home, LogOut, Menu, UserRound } from "lucide-react";
 
 import {
   DropdownMenu,
@@ -95,13 +95,6 @@ export function AppHeader({ staff, onMenuClick }: { staff: Staff; onMenuClick: (
               <Link href="/profil">
                 <UserRound />
                 Profil
-              </Link>
-            </DropdownMenuItem>
-
-            <DropdownMenuItem asChild>
-              <Link href="/parametres">
-                <Settings />
-                Détails du médecin
               </Link>
             </DropdownMenuItem>
 

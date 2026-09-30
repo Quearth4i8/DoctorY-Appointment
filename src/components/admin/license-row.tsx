@@ -4,7 +4,7 @@ import { useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { formatDistanceToNow } from "date-fns";
 import { fr } from "date-fns/locale";
-import { ChevronDown, ChevronRight, Loader2, Monitor, Trash2 } from "lucide-react";
+import { Ban, ChevronDown, ChevronRight, Loader2, Monitor, RotateCcw, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 
 import { Badge } from "@/components/ui/badge";
@@ -14,6 +14,7 @@ import {
   deleteLicense,
   fetchActivations,
   releaseActivation,
+  updateLicense,
   type LicenseKey,
 } from "@/lib/admin/client-api";
 import { cn } from "@/lib/utils";
@@ -71,6 +72,21 @@ export function LicenseRow({ license }: { license: LicenseKey }) {
       toast.error(err instanceof AdminApiError ? err.message : "Suppression impossible."),
   });
 
+  const toggleRevoked = useMutation({
+    mutationFn: () =>
+      updateLicense(license.key, {
+        max_activations: license.max_activations,
+        expires_at: license.expires_at,
+        revoked: !license.revoked,
+      }),
+    onSuccess: () => {
+      toast.success(license.revoked ? "Clé réactivée." : "Clé révoquée.");
+      qc.invalidateQueries({ queryKey: ["admin-licenses"] });
+    },
+    onError: (err) =>
+      toast.error(err instanceof AdminApiError ? err.message : "Action impossible."),
+  });
+
   const usageRatio = Math.min(1, license.activation_count / license.max_activations);
   const atLimit = license.activation_count >= license.max_activations;
 
@@ -119,12 +135,36 @@ export function LicenseRow({ license }: { license: LicenseKey }) {
             <Button
               variant="ghost"
               size="icon"
+              title={license.revoked ? "Réactiver" : "Révoquer"}
+              disabled={toggleRevoked.isPending}
+              onClick={() => {
+                if (
+                  license.revoked ||
+                  window.confirm(
+                    `Révoquer la clé de ${license.label || license.key} ? Toutes ses machines seront bloquées dès leur prochaine connexion. Vous pourrez la réactiver.`,
+                  )
+                ) {
+                  toggleRevoked.mutate();
+                }
+              }}
+            >
+              {toggleRevoked.isPending ? (
+                <Loader2 className="h-4 w-4 animate-spin" />
+              ) : license.revoked ? (
+                <RotateCcw className="h-4 w-4 text-muted-foreground" />
+              ) : (
+                <Ban className="h-4 w-4 text-destructive" />
+              )}
+            </Button>
+            <Button
+              variant="ghost"
+              size="icon"
               title="Supprimer"
               disabled={remove.isPending}
               onClick={() => {
                 if (
                   window.confirm(
-                    `Supprimer la clé de ${license.label || license.key} ? Cette action est irréversible.`,
+                    `Supprimer la clé de ${license.label || license.key} ? Toutes ses machines perdront l'accès dès leur prochaine connexion. Cette action est irréversible.`,
                   )
                 ) {
                   remove.mutate();
@@ -184,7 +224,7 @@ export function LicenseRow({ license }: { license: LicenseKey }) {
                       onClick={() => {
                         if (
                           window.confirm(
-                            "Libérer cette machine ? Le médecin pourra activer un nouvel ordinateur à sa place.",
+                            "Libérer cette machine ? Le médecin pourra activer un nouvel ordinateur à sa place. Attention : cela ne bloque pas cette machine — si elle se reconnecte, elle reprendra la place libre. Pour bloquer, révoquez la clé.",
                           )
                         ) {
                           release.mutate(a.id);

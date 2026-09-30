@@ -18,6 +18,7 @@ import {
 import { AvailabilityGrid } from "@/components/public/availability-grid";
 import { Breadcrumbs, type Crumb } from "@/components/public/breadcrumbs";
 import { EmailAction, PhoneAction } from "@/components/public/contact-action";
+import { PhotoZoom } from "@/components/public/photo-zoom";
 import { ProviderAvatar } from "@/components/public/provider-avatar";
 import { RatingForm } from "@/components/public/rating-form";
 import { RatingStars } from "@/components/public/rating-stars";
@@ -74,6 +75,9 @@ export default async function ProviderPage({
 
   const meta = kindMeta(provider.kind);
   const place = [provider.address, provider.city].filter(Boolean).join(", ");
+  // The live slot grid is on the page, so the sidebar leads with the map
+  // instead of a booking card that would only point back at the grid.
+  const showMap = provider.booking_mode === "agenda" && provider.legacy_doctor_id !== null;
 
   /*
    * Catalogue → métier → spécialité → this establishment.
@@ -109,13 +113,20 @@ export default async function ProviderPage({
           <Breadcrumbs items={trail} className="mb-5" />
 
           <div className="flex flex-wrap items-center gap-5">
-            <ProviderAvatar
-              photoUrl={provider.photo_url}
-              kind={provider.kind}
-              name={provider.name}
-              className="h-[5.5rem] w-[5.5rem] rounded-2xl"
-              iconClassName="h-9 w-9"
-            />
+            {provider.photo_url ? (
+              <PhotoZoom
+                src={provider.photo_url}
+                name={provider.name}
+                className="h-[5.5rem] w-[5.5rem] rounded-2xl"
+              />
+            ) : (
+              <ProviderAvatar
+                kind={provider.kind}
+                name={provider.name}
+                className="h-[5.5rem] w-[5.5rem] rounded-2xl"
+                iconClassName="h-9 w-9"
+              />
+            )}
 
             <div className="min-w-0 flex-1">
               <div className="flex flex-wrap items-center gap-2.5">
@@ -143,10 +154,17 @@ export default async function ProviderPage({
                     {provider.specialties.map((s) => s.label).join(" · ")}
                   </span>
                 ) : null}
+                {/* Just the town. The full street address lives in the
+                    Coordonnées panel with its itinerary link; repeated here in
+                    full it ran the whole width of the band and read as a
+                    paragraph. No city on file → the address, cut to one line. */}
                 {place ? (
-                  <span className="inline-flex items-center gap-1.5">
-                    <MapPin className="h-4 w-4" />
-                    {place}
+                  <span
+                    className="inline-flex min-w-0 max-w-full items-center gap-1.5"
+                    title={place}
+                  >
+                    <MapPin className="h-4 w-4 shrink-0" />
+                    <span className="truncate">{provider.city || place}</span>
                   </span>
                 ) : null}
               </div>
@@ -156,8 +174,12 @@ export default async function ProviderPage({
                 Getting in touch is what most visitors to a profile do next, so
                 it gets controls of its own rather than two more entries in the
                 grey meta line above. Stacked, and stretched to full width below
-                sm — where they take their own row and double as tap targets. */}
-            <div className="flex w-full shrink-0 flex-col items-stretch gap-2 sm:ml-auto sm:w-auto sm:items-end">
+                sm — where they take their own row and double as tap targets.
+                Stretched on wide screens too: each button sized to its own
+                text made a short phone pill sit ragged over a long email one,
+                so the column takes the widest and both fill it, contents
+                left-aligned so the icons line up. */}
+            <div className="flex w-full shrink-0 flex-col items-stretch gap-2 sm:ml-auto sm:w-auto">
               {provider.open_24_7 || provider.has_emergency ? (
                 <span className="inline-flex items-center justify-center gap-2 rounded-full bg-card px-4 py-2 text-sm font-bold text-ok-foreground sm:self-end">
                   <span className="h-2 w-2 rounded-full bg-ok" />
@@ -321,7 +343,13 @@ export default async function ProviderPage({
         </div>
 
         <aside className="flex flex-col gap-5 lg:sticky lg:top-24">
-          <ActionCard provider={provider} />
+          {/* With the live slot grid on the page, a "choose a slot" card only
+              pointed back at it. Where the visitor is going is more use. */}
+          {showMap ? (
+            <LocationCard provider={provider} />
+          ) : (
+            <ActionCard provider={provider} />
+          )}
 
           {provider.hours.length > 0 ? (
             <Panel title="Horaires">
@@ -337,7 +365,8 @@ export default async function ProviderPage({
                 down the list and made one entry look like a different kind of
                 thing from the other three. */}
             <ul className="-mx-2 flex flex-col gap-0.5">
-              {place ? (
+              {/* Already on the map card when that is shown. */}
+              {place && !showMap ? (
                 <ContactRow icon={MapPin} href={directionsUrl(provider)} external>
                   <span className="block leading-relaxed">{provider.address}</span>
                   {provider.postcode || provider.city ? (
@@ -590,6 +619,57 @@ function initials(name: string): string {
     .join("")
     .slice(0, 2)
     .toUpperCase();
+}
+
+/**
+ * The practice on a map, with the way there one tap away.
+ *
+ * Google's keyless embed rather than a map library: one iframe, nothing added
+ * to the bundle, and it geocodes a plain address when a profile has no
+ * coordinates yet. Lazy-loaded, since it sits beside the fold.
+ */
+function LocationCard({ provider }: { provider: Provider }) {
+  const hasCoords = provider.latitude !== null && provider.longitude !== null;
+  const place = [provider.address, provider.postcode, provider.city]
+    .filter(Boolean)
+    .join(", ");
+  const query = hasCoords ? `${provider.latitude},${provider.longitude}` : place;
+
+  if (!query) return null;
+
+  return (
+    <div className="overflow-hidden rounded-2xl border border-border-warm bg-card shadow-card">
+      <iframe
+        title={`Localisation de ${provider.name}`}
+        src={`https://maps.google.com/maps?q=${encodeURIComponent(query)}&z=16&hl=fr&output=embed`}
+        className="block h-60 w-full border-0"
+        loading="lazy"
+        referrerPolicy="no-referrer-when-downgrade"
+      />
+      <div className="flex flex-col gap-3 p-5">
+        <div className="flex items-start gap-2.5">
+          <MapPin className="mt-0.5 h-4 w-4 shrink-0 text-primary" />
+          <div className="min-w-0 text-[0.85rem] leading-relaxed">
+            {provider.address ? <p>{provider.address}</p> : null}
+            {provider.postcode || provider.city ? (
+              <p className="text-muted-foreground">
+                {[provider.postcode, provider.city].filter(Boolean).join(" ")}
+              </p>
+            ) : null}
+          </div>
+        </div>
+        <Link
+          href={directionsUrl(provider)}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="inline-flex h-12 items-center justify-center gap-2 rounded-xl bg-primary text-[0.95rem] font-bold text-primary-foreground transition-all hover:brightness-110"
+        >
+          <MapPin className="h-4 w-4" />
+          Ouvrir l&apos;itinéraire
+        </Link>
+      </div>
+    </div>
+  );
 }
 
 function directionsUrl(provider: Provider): string {
