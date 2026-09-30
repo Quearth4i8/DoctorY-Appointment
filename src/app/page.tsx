@@ -3,11 +3,13 @@ import Image from "next/image";
 import Link from "next/link";
 import { ArrowRight, Clock, Cross, ShieldCheck, UserRound } from "lucide-react";
 
+import { AppShowcase } from "@/components/public/app-showcase";
 import { Reveal } from "@/components/public/reveal";
 import { ScrollToTop } from "@/components/public/scroll-to-top";
 import { SiteFooter, SiteHeader } from "@/components/public/site-chrome";
 import { ProviderCard } from "@/components/public/provider-card";
 import { SearchBar } from "@/components/public/search-bar";
+import { LATEST_RELEASE, downloadUrl } from "@/lib/desktop-releases";
 import { KIND_ORDER, kindMeta } from "@/lib/provider-kinds";
 import {
   countProvidersByKind,
@@ -289,6 +291,17 @@ export default async function LandingPage() {
                 ))}
               </div>
             </section>
+          </Reveal>
+
+          {/* The desktop app, for the doctors reading this page. Right before
+              the "professionnel de santé ?" band, so the two read as one pitch:
+              what you get, then how to join. */}
+          <Reveal>
+            <AppShowcase
+              version={LATEST_RELEASE.version}
+              sizeMb={LATEST_RELEASE.sizeMb}
+              downloadHref={downloadUrl(LATEST_RELEASE)}
+            />
           </Reveal>
 
           {/* Professionnels */}

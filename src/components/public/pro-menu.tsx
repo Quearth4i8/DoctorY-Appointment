@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { BadgeCheck, Building2, ChevronDown, LogIn, Store } from "lucide-react";
+import { BadgeCheck, Building2, ChevronDown, Download, LogIn, Store } from "lucide-react";
 
 import {
   DropdownMenu,
@@ -70,6 +70,18 @@ export function ProMenu() {
               <span className="font-semibold">Revendiquer une fiche</span>
               <span className="text-xs text-muted-foreground">
                 Elle existe déjà sans vous
+              </span>
+            </span>
+          </Link>
+        </DropdownMenuItem>
+
+        <DropdownMenuItem asChild>
+          <Link href="/telecharger" className="cursor-pointer gap-2.5">
+            <Download />
+            <span className="flex flex-col">
+              <span className="font-semibold">Application pour médecins</span>
+              <span className="text-xs text-muted-foreground">
+                Télécharger DoctorY pour Windows
               </span>
             </span>
           </Link>

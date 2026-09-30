@@ -24,6 +24,7 @@ const PUBLIC_PREFIXES = [
   "/avis", // feedback about the site
   "/signaler", // report a wrong listing
   "/confidentialite", // privacy page
+  "/telecharger", // desktop app download page and changelog
   "/api/public", // endpoints backing the public pages
   "/api/sync", // doctor's desktop app, authenticated by DESKTOP_SYNC_TOKEN
   "/auth", // sign-out and auth callbacks

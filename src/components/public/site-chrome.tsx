@@ -1,6 +1,6 @@
 import Image from "next/image";
 import Link from "next/link";
-import { Home } from "lucide-react";
+import { Download, Home } from "lucide-react";
 
 import { ProMenu } from "@/components/public/pro-menu";
 import { SiteNav } from "@/components/public/site-nav";
@@ -36,6 +36,17 @@ export function SiteHeader() {
         <SiteNav />
 
         <div className="ml-auto flex items-center gap-2">
+          {/* The desktop app's own door, always in view for the doctors
+              reading the site. Text from sm up, icon only below. */}
+          <Link
+            href="/telecharger"
+            title="Télécharger l'application DoctorY"
+            className="group/dl inline-flex h-10 shrink-0 items-center gap-2 rounded-xl bg-primary px-3 text-sm font-bold text-primary-foreground shadow-card transition-all duration-base ease-spring hover:-translate-y-px hover:brightness-110 sm:px-4"
+          >
+            <Download className="h-4 w-4 transition-transform duration-base ease-spring group-hover/dl:translate-y-0.5" />
+            <span className="hidden sm:inline">Télécharger</span>
+          </Link>
+
           {/* Icon-only, so it reads as a shortcut rather than a second
               "Accueil" competing with the one in the nav. Same height and
               radius as the menu trigger beside it. */}
@@ -90,6 +101,7 @@ export function SiteFooter() {
           <FooterColumn title="Professionnels">
             <FooterLink href="/pro">Inscrire un établissement</FooterLink>
             <FooterLink href="/pro/revendiquer">Revendiquer une fiche</FooterLink>
+            <FooterLink href="/telecharger">Application pour médecins</FooterLink>
             <FooterLink href="/login">Espace secrétariat</FooterLink>
           </FooterColumn>
 

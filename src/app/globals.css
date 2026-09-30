@@ -445,3 +445,14 @@ body {
     background-color: hsl(var(--paper-muted));
   }
 }
+
+/* The running bar under the active screen tab of the home page's app
+   showcase: it fills over one slide's duration, then the next tab takes it. */
+@keyframes app-slide-progress {
+  from {
+    transform: scaleX(0);
+  }
+  to {
+    transform: scaleX(1);
+  }
+}
