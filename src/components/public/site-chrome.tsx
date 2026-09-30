@@ -4,6 +4,7 @@ import { Download, Home } from "lucide-react";
 
 import { ProMenu } from "@/components/public/pro-menu";
 import { SiteNav } from "@/components/public/site-nav";
+import { LEGAL_PAGES } from "@/lib/legal";
 
 /**
  * Header and footer for the pages a patient sees. No session required.
@@ -110,13 +111,25 @@ export function SiteFooter() {
             <FooterLink href="/avis">Donner mon avis</FooterLink>
             <FooterLink href="/signaler">Signaler une erreur</FooterLink>
             <FooterLink href="/confidentialite">Confidentialité</FooterLink>
+            <FooterLink href="/conditions-utilisation">Conditions d&apos;utilisation</FooterLink>
           </FooterColumn>
         </div>
 
-        <div className="mt-10 flex items-center justify-between border-t border-border-warm pt-6">
+        <div className="mt-10 flex flex-wrap items-center justify-between gap-4 border-t border-border-warm pt-6">
           <p className="text-xs text-muted-foreground">
             © {year} DoctorY. Tous droits réservés.
           </p>
+          <nav aria-label="Informations légales" className="flex flex-wrap gap-x-5 gap-y-2 sm:ml-auto sm:mr-6">
+            {LEGAL_PAGES.map((p) => (
+              <Link
+                key={p.href}
+                href={p.href}
+                className="text-xs text-muted-foreground transition-colors hover:text-foreground"
+              >
+                {p.label}
+              </Link>
+            ))}
+          </nav>
           {/* Deliberately not styled like a link: this is the operator's own
               back office, not a page a visitor or a secretary has any reason
               to open. It sits here, unlabeled beyond a single dot, instead of

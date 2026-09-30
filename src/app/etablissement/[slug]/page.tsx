@@ -18,6 +18,7 @@ import {
 import { AvailabilityGrid } from "@/components/public/availability-grid";
 import { Breadcrumbs, type Crumb } from "@/components/public/breadcrumbs";
 import { EmailAction, PhoneAction } from "@/components/public/contact-action";
+import { ClickToLoadMap } from "@/components/public/click-to-load-map";
 import { PhotoZoom } from "@/components/public/photo-zoom";
 import { ProviderAvatar } from "@/components/public/provider-avatar";
 import { RatingForm } from "@/components/public/rating-form";
@@ -629,7 +630,9 @@ function initials(name: string): string {
  *
  * Google's keyless embed rather than a map library: one iframe, nothing added
  * to the bundle, and it geocodes a plain address when a profile has no
- * coordinates yet. Lazy-loaded, since it sits beside the fold.
+ * coordinates yet. Loaded only on click (ClickToLoadMap), so Google sets no
+ * cookie for a visitor who never opens it — which is what spares the site a
+ * cookie banner.
  */
 function LocationCard({ provider }: { provider: Provider }) {
   const hasCoords = provider.latitude !== null && provider.longitude !== null;
@@ -642,12 +645,10 @@ function LocationCard({ provider }: { provider: Provider }) {
 
   return (
     <div className="overflow-hidden rounded-2xl border border-border-warm bg-card shadow-card">
-      <iframe
+      <ClickToLoadMap
         title={`Localisation de ${provider.name}`}
         src={`https://maps.google.com/maps?q=${encodeURIComponent(query)}&z=16&hl=fr&output=embed`}
-        className="block h-60 w-full border-0"
-        loading="lazy"
-        referrerPolicy="no-referrer-when-downgrade"
+        className="h-60"
       />
       <div className="flex flex-col gap-3 p-5">
         <div className="flex items-start gap-2.5">

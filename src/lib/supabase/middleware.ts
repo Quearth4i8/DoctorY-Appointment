@@ -25,6 +25,9 @@ const PUBLIC_PREFIXES = [
   "/signaler", // report a wrong listing
   "/confidentialite", // privacy page
   "/telecharger", // desktop app download page and changelog
+  "/mentions-legales", // legal notice
+  "/conditions-utilisation", // website terms of use
+  "/licence", // desktop app licence terms
   "/api/public", // endpoints backing the public pages
   "/api/sync", // doctor's desktop app, authenticated by DESKTOP_SYNC_TOKEN
   "/auth", // sign-out and auth callbacks
