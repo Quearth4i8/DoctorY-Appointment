@@ -191,11 +191,26 @@ export default async function ProviderPage({
               ) : null}
 
               {/* One button per number — a practice often has a landline
-                  and a mobile, typed into one field as "A / B". */}
-              {phones.map((phone) => (
-                <PhoneAction key={phone} phone={phone} />
-              ))}
-              {provider.email ? <EmailAction email={provider.email} /> : null}
+                  and a mobile, typed into one field as "A / B". From sm up,
+                  numbers sit side by side and the email spans the row under
+                  them, so a second number widens the block instead of adding
+                  a third stacked row of height. */}
+              <div
+                className={cn(
+                  "grid gap-2",
+                  phones.length > 1 && "sm:grid-cols-2",
+                )}
+              >
+                {phones.map((phone) => (
+                  <PhoneAction key={phone} phone={phone} />
+                ))}
+                {provider.email ? (
+                  <EmailAction
+                    email={provider.email}
+                    className={phones.length > 1 ? "sm:col-span-2" : undefined}
+                  />
+                ) : null}
+              </div>
             </div>
             </div>
         </div>

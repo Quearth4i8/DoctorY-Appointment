@@ -256,6 +256,26 @@ export async function searchProviders(
 }
 
 /**
+ * The annuaire profile a legacy `doctors` row became, if it has one.
+ *
+ * The old /medecins/<slug> pages predate the annuaire and lack its booking
+ * grid, map and ratings; they redirect here so every old link — "Voir en
+ * ligne" in the settings, cards, links already shared — lands on the current
+ * profile. Published profiles only, matching what a visitor may see.
+ */
+export async function getProviderSlugForDoctor(doctorId: string): Promise<string | null> {
+  const { data } = await createClient()
+    .from("providers")
+    .select("slug")
+    .eq("legacy_doctor_id", doctorId)
+    .eq("is_published", true)
+    .limit(1)
+    .maybeSingle();
+  const slug = (data as { slug?: string } | null)?.slug;
+  return slug ? String(slug) : null;
+}
+
+/**
  * Just enough to answer "what is this establishment's agenda?".
  *
  * `getProviderBySlug` loads practitioners, services, specialties and hours —

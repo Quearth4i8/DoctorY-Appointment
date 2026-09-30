@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { notFound } from "next/navigation";
+import { notFound, permanentRedirect } from "next/navigation";
 import {
   CalendarDays,
   Clock,
@@ -14,6 +14,7 @@ import {
 import { SiteFooter, SiteHeader } from "@/components/public/site-chrome";
 import { AvailabilityGrid } from "@/components/public/availability-grid";
 import { getDoctorBySlug } from "@/lib/doctors";
+import { getProviderSlugForDoctor } from "@/lib/providers";
 import { formatPhone, splitPhones, telHref } from "@/lib/phones";
 import { initials } from "@/lib/avatar";
 import { directionsUrl, osmEmbedUrl } from "@/lib/geo";
@@ -47,6 +48,12 @@ export default async function DoctorPage({
   // An unpublished profile is invisible to visitors: RLS returns nothing, so
   // this is a genuine 404 rather than a "forbidden" that confirms it exists.
   if (!doctor || !doctor.is_published) notFound();
+
+  // Superseded by the annuaire profile wherever one exists (see
+  // getProviderSlugForDoctor). This page only still renders for a doctor
+  // with no establishment behind it.
+  const providerSlug = await getProviderSlugForDoctor(doctor.id);
+  if (providerSlug) permanentRedirect(`/etablissement/${providerSlug}`);
 
   const name = `${doctor.title} ${doctor.full_name}`.trim();
   const place = [doctor.address, doctor.city].filter(Boolean).join(", ");
