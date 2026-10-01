@@ -1,10 +1,9 @@
 import type { Metadata } from "next";
-import Link from "next/link";
-import { SearchX } from "lucide-react";
 
 import { ScrollToTop } from "@/components/public/scroll-to-top";
 import { SiteFooter, SiteHeader } from "@/components/public/site-chrome";
 import { getProviderBySlug } from "@/lib/providers";
+import { ProviderPicker } from "./provider-picker";
 import { ReportForm } from "./report-form";
 
 export const dynamic = "force-dynamic";
@@ -32,29 +31,13 @@ export default async function SignalerPage({
       <SiteHeader />
 
       <main className="mx-auto w-full max-w-2xl flex-1 px-4 py-10 sm:px-6 lg:px-8">
-        {/* A report is always about a specific listing. Without one there is
-            nothing to correct, so send them to find it rather than collect a
-            complaint nobody can act on. */}
+        {/* A report is always about a specific listing. Reached without one
+            (the menu, the footer), the page lets the visitor find it here
+            rather than sending them off to search and come back. */}
         {published ? (
           <ReportForm providerSlug={published.slug} providerName={published.name} />
         ) : (
-          <div className="flex flex-col items-center gap-3 rounded-2xl border border-border-warm bg-card p-9 text-center shadow-card">
-            <span className="flex h-14 w-14 items-center justify-center rounded-full bg-warn-soft text-warn-foreground">
-              <SearchX className="h-7 w-7" />
-            </span>
-            <h1 className="text-lg font-bold">Quel établissement ?</h1>
-            <p className="max-w-sm text-sm leading-relaxed text-muted-foreground">
-              Ouvrez la fiche concernée et utilisez le bouton « Signaler une
-              erreur » qui s&apos;y trouve : le signalement doit être rattaché à
-              une fiche pour être corrigé.
-            </p>
-            <Link
-              href="/recherche"
-              className="mt-2 inline-flex h-11 items-center rounded-xl bg-primary px-5 text-sm font-bold text-primary-foreground transition-all hover:brightness-110"
-            >
-              Chercher un établissement
-            </Link>
-          </div>
+          <ProviderPicker />
         )}
       </main>
 
