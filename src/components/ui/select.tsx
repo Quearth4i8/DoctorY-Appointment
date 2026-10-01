@@ -5,8 +5,22 @@ import * as SelectPrimitive from "@radix-ui/react-select";
 import { Check, ChevronDown } from "lucide-react";
 
 import { cn } from "@/lib/utils";
+import { ExclusiveScope, useExclusiveOpen } from "@/components/ui/exclusive-open";
 
-const Select = SelectPrimitive.Root;
+/** Root with app-wide "one open panel at a time" (see exclusive-open.ts). */
+function Select({
+  open,
+  defaultOpen,
+  onOpenChange,
+  ...props
+}: React.ComponentProps<typeof SelectPrimitive.Root>) {
+  const [isOpen, setOpen, chain] = useExclusiveOpen({ open, defaultOpen, onOpenChange });
+  return (
+    <ExclusiveScope chain={chain}>
+      <SelectPrimitive.Root open={isOpen} onOpenChange={setOpen} {...props} />
+    </ExclusiveScope>
+  );
+}
 const SelectGroup = SelectPrimitive.Group;
 const SelectValue = SelectPrimitive.Value;
 
@@ -44,7 +58,9 @@ const SelectContent = React.forwardRef<
       ref={ref}
       position={position}
       className={cn(
-        "relative z-50 max-h-72 min-w-[9rem] overflow-y-auto overflow-x-hidden rounded-xl border border-border bg-popover p-1.5 text-popover-foreground shadow-modal scrollbar-slim",
+        // Exactly the trigger's width — never wider, never narrower — so a
+        // list reads as the field it belongs to.
+        "relative z-50 max-h-72 w-[var(--radix-select-trigger-width)] overflow-y-auto overflow-x-hidden rounded-xl border border-border bg-popover p-1.5 text-popover-foreground shadow-modal scrollbar-slim",
         "data-[state=open]:animate-in data-[state=closed]:animate-out",
         "data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0",
         "data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95",

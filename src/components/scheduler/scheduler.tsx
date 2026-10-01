@@ -1,10 +1,12 @@
 "use client";
 
 import { useMemo, useState } from "react";
+import Link from "next/link";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { addDays, format, isWithinInterval } from "date-fns";
 import { fr } from "date-fns/locale";
 import {
+  CalendarOff,
   CalendarPlus,
   ChevronLeft,
   ChevronRight,
@@ -26,6 +28,8 @@ import {
   viewDays,
 } from "@/lib/scheduler";
 import type { Appointment } from "@/types";
+import { formatAbsenceRange, reasonLabel, type Absence } from "@/lib/absences";
+import { createClient } from "@/lib/supabase/client";
 import { WeekGrid } from "./week-grid";
 import { MonthGrid } from "./month-grid";
 import { StatusLegend } from "./status-legend";
@@ -100,6 +104,27 @@ export function Scheduler({ initialWeek = null }: { initialWeek?: InitialWeek })
           ? initialWeek.appointments
           : undefined,
     });
+
+  // The doctor's absences over the same range, straight from Supabase (RLS
+  // limits them to this practice). A failure only hides the bands — the
+  // agenda itself must never depend on them.
+  const { data: absences = [] } = useQuery({
+    queryKey: ["absences", from, to],
+    queryFn: async () => {
+      const start = new Date(`${from}T00:00:00`);
+      const end = new Date(`${to}T00:00:00`);
+      end.setDate(end.getDate() + 1);
+      const { data, error } = await createClient()
+        .from("doctor_absences")
+        .select("id, starts_at, ends_at, reason, note")
+        .lt("starts_at", end.toISOString())
+        .gt("ends_at", start.toISOString())
+        .order("starts_at");
+      if (error) return [];
+      return (data ?? []) as Absence[];
+    },
+    staleTime: 60_000,
+  });
 
   function invalidate() {
     qc.invalidateQueries({ queryKey: ["week"] });
@@ -279,6 +304,23 @@ export function Scheduler({ initialWeek = null }: { initialWeek?: InitialWeek })
         </div>
       ) : null}
 
+      {/* Absences in view — said in words above the grid, not only as bands. */}
+      {absences.length > 0 ? (
+        <div className="flex flex-wrap items-center gap-x-4 gap-y-2 rounded-xl border border-amber-300/60 bg-amber-50 px-4 py-3 text-sm text-amber-900">
+          <CalendarOff className="h-4 w-4 shrink-0" />
+          <div className="flex min-w-0 flex-1 flex-col gap-0.5">
+            {absences.map((a) => (
+              <span key={a.id}>
+                <strong>{reasonLabel(a.reason)}</strong> {formatAbsenceRange(a)} — les patients ne peuvent pas réserver.
+              </span>
+            ))}
+          </div>
+          <Link href="/absences" className="shrink-0 font-semibold underline-offset-4 hover:underline">
+            Gérer les absences
+          </Link>
+        </div>
+      ) : null}
+
       {/* Calendar. The month has no time axis, so it gets its own grid; day and
           week are the same time grid with a different number of columns. */}
       {view === "month" ? (
@@ -292,6 +334,7 @@ export function Scheduler({ initialWeek = null }: { initialWeek?: InitialWeek })
             setAnchor(day);
             setView("day");
           }}
+          absences={absences}
         />
       ) : (
         <WeekGrid
@@ -302,6 +345,7 @@ export function Scheduler({ initialWeek = null }: { initialWeek?: InitialWeek })
           onReschedule={handleReschedule}
           activeId={activeId}
           setActiveId={setActiveId}
+          absences={absences}
         />
       )}
 

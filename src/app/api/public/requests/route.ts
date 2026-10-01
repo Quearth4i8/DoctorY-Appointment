@@ -6,6 +6,7 @@ import { findPatientByDossier } from "@/lib/front-desk";
 import { getDoctorBySlug } from "@/lib/doctors";
 import { clientIp, hashIp, normalisePhone } from "@/lib/request-intake";
 import { verifyTurnstile } from "@/lib/turnstile";
+import { formatAbsenceRange, returnDate, type Absence } from "@/lib/absences";
 
 export const dynamic = "force-dynamic";
 
@@ -122,6 +123,21 @@ export async function POST(req: Request) {
         ? "Numéro de dossier ou téléphone incorrect. Vérifiez-les, ou choisissez « Nouveau patient »."
         : "Le nom est obligatoire.",
     );
+  }
+
+  // 2c. The doctor is away then. The grid already hides those slots; this
+  //     catches a stale tab or a hand-made URL, and says why rather than
+  //     letting the secretary discover a request for a day nobody is in.
+  if (preferredAt) {
+    const absent = await absenceAt(body.doctor_slug ?? "", preferredAt);
+    if (absent) {
+      const back = returnDate(absent);
+      return bad(
+        `Le médecin est absent ${formatAbsenceRange(absent)}${back ? ` — reprise le ${back}` : ""}. Choisissez une autre date.`,
+        409,
+        "DOCTOR_ABSENT",
+      );
+    }
   }
 
   // 3. Bot check.
@@ -263,4 +279,27 @@ async function clearRecentFor(phone: string, ipHash: string | null) {
 // stays vague, the network tab says exactly which piece is missing.
 function bad(error: string, status = 400, code?: string) {
   return NextResponse.json(code ? { error, code } : { error }, { status });
+}
+
+/**
+ * The absence covering `iso` for the doctor behind `slug`, if any. Any lookup
+ * failure answers "not absent": an absence check must never be the reason a
+ * patient cannot reach a practice that is open.
+ */
+async function absenceAt(slug: string, iso: string): Promise<Absence | null> {
+  try {
+    const doctor = await getDoctorBySlug(slug);
+    if (!doctor) return null;
+    const start = new Date(iso);
+    const end = new Date(start.getTime() + 30 * 60_000);
+    const { data, error } = await createClient().rpc("public_absences", {
+      p_doctor: doctor.id,
+      p_from: start.toISOString(),
+      p_to: end.toISOString(),
+    });
+    if (error || !data?.length) return null;
+    return data[0] as Absence;
+  } catch {
+    return null;
+  }
 }

@@ -6,10 +6,22 @@ import {
   ChevronLeftIcon,
   ChevronRightIcon,
 } from "lucide-react"
-import { DayButton, DayPicker, getDefaultClassNames } from "react-day-picker"
+import {
+  DayButton,
+  DayPicker,
+  getDefaultClassNames,
+  type DropdownProps,
+} from "react-day-picker"
 
 import { cn } from "@/lib/utils"
 import { Button, buttonVariants } from "@/components/ui/button"
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select"
 
 function Calendar({
   className,
@@ -36,8 +48,11 @@ function Calendar({
       )}
       captionLayout={captionLayout}
       formatters={{
-        formatMonthDropdown: (date) =>
-          date.toLocaleString("default", { month: "short" }),
+        // French, written out, capitalised: "Octobre", not the browser's "Oct".
+        formatMonthDropdown: (date) => {
+          const m = date.toLocaleString("fr-FR", { month: "long" })
+          return m.charAt(0).toUpperCase() + m.slice(1)
+        },
         ...formatters,
       }}
       classNames={{
@@ -156,6 +171,9 @@ function Calendar({
           )
         },
         DayButton: CalendarDayButton,
+        // The month/year pickers, as the site's own Select rather than the
+        // browser's <select> (a grey OS list with a Windows-blue highlight).
+        Dropdown: CalendarDropdown,
         WeekNumber: ({ children, ...props }) => {
           return (
             <td {...props}>
@@ -207,6 +225,47 @@ function CalendarDayButton({
       )}
       {...props}
     />
+  )
+}
+
+/**
+ * DayPicker hands a dropdown its options and a native onChange; this renders
+ * them with the site's Select and replays the pick as the change event
+ * DayPicker reads (`e.target.value`).
+ */
+function CalendarDropdown({ options, value, onChange, disabled, ...rest }: DropdownProps) {
+  const label = rest["aria-label"]
+  // Wide enough for the longest option ("Septembre", "2026") plus the check
+  // mark, since the open list is exactly as wide as this button.
+  const longest = Math.max(4, ...(options ?? []).map((o) => String(o.label).length))
+  return (
+    <Select
+      value={value !== undefined ? String(value) : undefined}
+      disabled={disabled}
+      onValueChange={(v) =>
+        onChange?.({ target: { value: v } } as React.ChangeEvent<HTMLSelectElement>)
+      }
+    >
+      <SelectTrigger
+        aria-label={label}
+        className="h-8 gap-1 rounded-md px-2.5 text-sm font-semibold shadow-none"
+        style={{ width: `calc(${longest}ch + 3.25rem)` }}
+      >
+        <SelectValue />
+      </SelectTrigger>
+      <SelectContent className="max-h-64">
+        {options?.map((o) => (
+          <SelectItem
+            key={o.value}
+            value={String(o.value)}
+            disabled={o.disabled}
+            className="py-1.5 text-sm"
+          >
+            {o.label}
+          </SelectItem>
+        ))}
+      </SelectContent>
+    </Select>
   )
 }
 

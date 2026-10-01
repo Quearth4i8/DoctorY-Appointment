@@ -19,17 +19,17 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Button } from "@/components/ui/button";
+import { DatePicker } from "@/components/ui/date-picker";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { useConfirm } from "@/components/ui/confirm-dialog";
 import { ApiError, createPatient, updatePatient } from "@/lib/client-api";
+import { INSURANCE_OPTIONS } from "@/lib/insurance";
 import { todayKey } from "@/lib/scheduler";
+import { avatarColor, initials } from "@/lib/avatar";
+import { cn } from "@/lib/utils";
 import type { PatientAdminInput, SafePatient } from "@/types";
 
-/** Matches the options the doctor's desktop app offers, so the two agree.
- *  CNAM is two options there — remboursement and étatique — and offering the
- *  retired single "CNAM" here would put it back on records the doctor has
- *  already re-filed. */
-const INSURANCE_OPTIONS = ["Aucune assurance", "CNAM remboursement", "CNAM étatique", "Privée"] as const;
 
 /** Radix Select has no concept of an empty value, so "unset" needs a token. */
 const NONE = "__none__";
@@ -134,6 +134,8 @@ export function PatientFormDialog({
 
   const derivedAge = ageFromDob(form.date_of_birth);
 
+  const confirm = useConfirm();
+
   async function submit(force = false) {
     if (!form.last_name.trim()) {
       toast.error("Le nom est obligatoire.");
@@ -160,9 +162,11 @@ export function PatientFormDialog({
     } catch (err) {
       // A same-name patient already exists — offer to create anyway.
       if (err instanceof ApiError && err.code === "DUPLICATE_PATIENT") {
-        const ok = window.confirm(
-          `${err.message}\n\nVoulez-vous quand même créer un nouveau patient ?`,
-        );
+        const ok = await confirm({
+          title: "Un patient porte déjà ce nom",
+          description: `${err.message} Voulez-vous quand même créer un nouveau patient ?`,
+          confirmLabel: "Créer quand même",
+        });
         if (ok) {
           setSaving(false);
           await submit(true);
@@ -178,43 +182,44 @@ export function PatientFormDialog({
     }
   }
 
+  const previewName =
+    `${form.first_name} ${form.last_name}`.trim() || (isEdit ? "Patient" : "Nouveau patient");
+  // A record that has an age but no readable birth date (older doctor.db
+  // rows): say what is known, so the required field is not a mystery.
+  const knownAge = isEdit && derivedAge === null && patient?.age != null ? patient.age : null;
+
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-h-[92vh] gap-0 overflow-y-auto p-0 scrollbar-slim sm:max-w-2xl">
-        <DialogHeader className="sticky top-0 z-10 border-b bg-card/85 px-6 py-5 backdrop-blur">
-          <DialogTitle className="text-xl tracking-tight">
-            {isEdit ? "Modifier le patient" : "Nouveau patient"}
-          </DialogTitle>
-          <DialogDescription>
-            {isEdit
-              ? "Coordonnées et informations administratives."
-              : "Le nom et la date de naissance sont obligatoires."}
-          </DialogDescription>
-        </DialogHeader>
-
-        <div className="flex flex-col gap-7 px-6 py-6">
-          {/* First, because it is how this patient is referred to everywhere
-              else — on the carnet, on an ordonnance, over the phone. */}
-          <div className="flex flex-wrap items-center gap-4 rounded-xl border border-border/70 bg-muted/30 px-4 py-3.5">
-            <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-primary/10 text-primary">
-              <IdCard className="h-[1.05rem] w-[1.05rem]" />
+        {/* Header: who this is, updating as it is typed. */}
+        <DialogHeader className="sticky top-0 z-10 border-b bg-card/90 px-6 py-5 backdrop-blur">
+          <div className="flex items-center gap-4 pr-8">
+            <span
+              className={cn(
+                "flex h-12 w-12 shrink-0 items-center justify-center rounded-xl text-base font-semibold",
+                patient ? avatarColor(patient.id) : "bg-primary/10 text-primary",
+              )}
+            >
+              {form.first_name || form.last_name ? (
+                initials(form.first_name, form.last_name)
+              ) : (
+                <UserPlus className="h-5 w-5" />
+              )}
             </span>
-            <div className="min-w-0 flex-1 space-y-1.5">
-              <Label className="text-sm font-medium">N° de dossier</Label>
-              <Input
-                value={form.numero_dossier}
-                onChange={(e) => set("numero_dossier", e.target.value)}
-                placeholder="ex. 83/2026"
-                className="tnum bg-card sm:max-w-[16rem]"
-              />
-              <p className="text-xs text-muted-foreground">
+            <div className="min-w-0 text-left">
+              <DialogTitle className="truncate text-lg tracking-tight">
+                {isEdit ? `Modifier · ${previewName}` : previewName}
+              </DialogTitle>
+              <DialogDescription>
                 {isEdit
-                  ? "Laisser vide pour conserver le numéro actuel."
-                  : "Laisser vide : le médecin en attribue un à la prochaine synchronisation."}
-              </p>
+                  ? "Coordonnées et informations administratives."
+                  : "Le nom et la date de naissance sont obligatoires."}
+              </DialogDescription>
             </div>
           </div>
+        </DialogHeader>
 
+        <div className="flex flex-col gap-5 px-6 py-6">
           <Section icon={UserRound} title="Identité">
             <div className="grid gap-4 sm:grid-cols-2">
               <Field label="Nom" required>
@@ -249,35 +254,37 @@ export function PatientFormDialog({
                   </SelectTrigger>
                   <SelectContent>
                     <SelectItem value={NONE}>—</SelectItem>
-                    <SelectItem value="M">M</SelectItem>
-                    <SelectItem value="F">F</SelectItem>
+                    <SelectItem value="M">Homme</SelectItem>
+                    <SelectItem value="F">Femme</SelectItem>
                   </SelectContent>
                 </Select>
               </Field>
-              <Field label="Date de naissance" required>
-                <Input
-                  type="date"
-                  value={form.date_of_birth}
-                  onChange={(e) => set("date_of_birth", e.target.value)}
-                  max={todayKey()}
-                  className="tnum"
-                />
-              </Field>
-
-              {/* Not a field. Nothing here is typeable, nothing is submitted —
-                  it is the date above, read back as what it means today. It
-                  disappears rather than showing a placeholder, because an empty
-                  box invites someone to fill it in. */}
-              {derivedAge !== null ? (
-                <div className="space-y-1.5">
-                  <Label className="text-sm font-medium text-muted-foreground">
-                    Âge
-                  </Label>
-                  <p className="flex h-11 items-center rounded-lg bg-muted/50 px-3.5 text-[0.95rem] font-medium text-foreground tnum">
-                    {derivedAge} ans
-                  </p>
-                </div>
-              ) : null}
+              <div className="sm:col-span-2">
+                <Field
+                  label="Date de naissance"
+                  required
+                  aside={
+                    derivedAge !== null ? (
+                      <span className="rounded-full bg-primary/10 px-2 py-0.5 text-xs font-semibold text-primary tnum">
+                        {derivedAge} ans
+                      </span>
+                    ) : null
+                  }
+                  hint={
+                    knownAge !== null
+                      ? `Âge enregistré : ${knownAge} ans — indiquez la date de naissance pour enregistrer.`
+                      : undefined
+                  }
+                >
+                  <DatePicker
+                    value={form.date_of_birth}
+                    onChange={(v) => set("date_of_birth", v)}
+                    max={todayKey()}
+                    dropdowns
+                    placeholder="Choisir la date de naissance"
+                  />
+                </Field>
+              </div>
             </div>
           </Section>
 
@@ -314,11 +321,19 @@ export function PatientFormDialog({
 
           <Section icon={IdCard} title="Administratif">
             <div className="grid gap-4 sm:grid-cols-2">
-              <Field label="Profession">
+              <Field
+                label="N° de dossier"
+                hint={
+                  isEdit
+                    ? "Laisser vide pour conserver le numéro actuel."
+                    : "Vide : le médecin en attribue un à la prochaine synchronisation."
+                }
+              >
                 <Input
-                  value={form.job}
-                  onChange={(e) => set("job", e.target.value)}
-                  placeholder="Enseignant"
+                  value={form.numero_dossier}
+                  onChange={(e) => set("numero_dossier", e.target.value)}
+                  placeholder="ex. 83/2026"
+                  className="tnum"
                 />
               </Field>
               <Field label="Assurance">
@@ -339,16 +354,21 @@ export function PatientFormDialog({
                   </SelectContent>
                 </Select>
               </Field>
+              <Field label="Profession">
+                <Input
+                  value={form.job}
+                  onChange={(e) => set("job", e.target.value)}
+                  placeholder="Enseignant"
+                />
+              </Field>
             </div>
           </Section>
         </div>
 
-        <div className="sticky bottom-0 flex gap-3 border-t bg-card/85 px-6 py-4 backdrop-blur">
+        <div className="sticky bottom-0 flex items-center justify-end gap-2 border-t bg-card/90 px-6 py-4 backdrop-blur">
           <Button
             type="button"
-            variant="outline"
-            size="lg"
-            className="flex-1"
+            variant="ghost"
             onClick={() => onOpenChange(false)}
             disabled={saving}
           >
@@ -356,8 +376,7 @@ export function PatientFormDialog({
           </Button>
           <Button
             type="button"
-            size="lg"
-            className="flex-1"
+            className="min-w-40"
             onClick={() => submit(false)}
             disabled={saving}
           >
@@ -368,7 +387,7 @@ export function PatientFormDialog({
             ) : (
               <UserPlus className="h-4 w-4" />
             )}
-            {isEdit ? "Enregistrer" : "Ajouter"}
+            {isEdit ? "Enregistrer" : "Ajouter le patient"}
           </Button>
         </div>
       </DialogContent>
@@ -386,9 +405,11 @@ function Section({
   children: React.ReactNode;
 }) {
   return (
-    <section className="flex flex-col gap-4">
-      <h3 className="flex items-center gap-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
-        <Icon className="h-3.5 w-3.5" />
+    <section className="flex flex-col gap-4 rounded-2xl border border-border/70 bg-muted/20 p-4 sm:p-5">
+      <h3 className="flex items-center gap-2 text-sm font-semibold text-foreground">
+        <span className="flex h-7 w-7 items-center justify-center rounded-lg bg-primary/10 text-primary">
+          <Icon className="h-3.5 w-3.5" />
+        </span>
         {title}
       </h3>
       {children}
@@ -400,19 +421,25 @@ function Field({
   label,
   required,
   hint,
+  aside,
   children,
 }: {
   label: string;
   required?: boolean;
   hint?: string;
+  /** Shown at the end of the label row — the computed age, for instance. */
+  aside?: React.ReactNode;
   children: React.ReactNode;
 }) {
   return (
     <div className="space-y-1.5">
-      <Label className="text-sm font-medium">
-        {label}
-        {required ? <span className="ml-0.5 text-destructive">*</span> : null}
-      </Label>
+      <div className="flex items-center justify-between gap-2">
+        <Label className="text-sm font-medium">
+          {label}
+          {required ? <span className="ml-0.5 text-destructive">*</span> : null}
+        </Label>
+        {aside}
+      </div>
       {children}
       {hint ? <p className="text-xs text-muted-foreground">{hint}</p> : null}
     </div>

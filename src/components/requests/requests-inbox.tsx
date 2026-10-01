@@ -22,6 +22,7 @@ import { toast } from "sonner";
 
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
+import { useConfirm } from "@/components/ui/confirm-dialog";
 import { ApiError, fetchRequests, refuseRequest } from "@/lib/client-api";
 import { avatarColor, initials } from "@/lib/avatar";
 import { cn } from "@/lib/utils";
@@ -66,8 +67,16 @@ export function RequestsInbox({
     qc.invalidateQueries({ queryKey: ["requests"] });
   }
 
+  const confirm = useConfirm();
+
   async function refuse(r: AppointmentRequest) {
-    if (!window.confirm(`Refuser la demande de ${r.last_name} ?`)) return;
+    const ok = await confirm({
+      title: `Refuser la demande de ${r.last_name} ?`,
+      description: "La demande sera retirée de la liste des demandes en attente.",
+      confirmLabel: "Refuser",
+      destructive: true,
+    });
+    if (!ok) return;
     setBusyId(r.id);
     try {
       await refuseRequest(r.id);

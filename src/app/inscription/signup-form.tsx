@@ -145,7 +145,12 @@ export function SignupForm() {
     const { error: signUpError } = await supabase.auth.signUp({
       email: email.trim(),
       password,
-      options: { data: { pairing_key: key.trim(), full_name: fullName.trim() } },
+      options: {
+        data: { pairing_key: key.trim(), full_name: fullName.trim() },
+        // The link confirms the email, finishes the liaison and opens the
+        // agenda in one go (see app/auth/confirm/route.ts).
+        emailRedirectTo: `${window.location.origin}/auth/confirm?next=/agenda`,
+      },
     });
 
     if (signUpError) {
@@ -162,7 +167,7 @@ export function SignupForm() {
       // successful signup look like a failure, which is why people retried
       // until they hit the email rate limit.
       return setNotice(
-        "Compte créé. Ouvrez l'email de confirmation, puis connectez-vous : la liaison avec le cabinet se terminera toute seule.",
+        `Compte créé. Cliquez sur le lien de confirmation envoyé à ${email.trim()} (pensez à vérifier les spams) : vous arriverez directement dans l'agenda du cabinet.`,
       );
     }
 

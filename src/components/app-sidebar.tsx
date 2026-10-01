@@ -7,6 +7,7 @@ import { usePathname } from "next/navigation";
 import { useQuery } from "@tanstack/react-query";
 import {
   CalendarDays,
+  CalendarOff,
   ChevronLeft,
   ChevronRight,
   Inbox,
@@ -24,6 +25,7 @@ const LINKS = [
   { href: "/agenda", label: "Agenda", icon: CalendarDays },
   { href: "/patients", label: "Patients", icon: Users },
   { href: "/demandes", label: "Demandes", icon: Inbox, counted: true },
+  { href: "/absences", label: "Absences", icon: CalendarOff },
   { href: "/parametres", label: "Détails du médecin", icon: Stethoscope },
 ] as const;
 

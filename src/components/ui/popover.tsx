@@ -4,8 +4,22 @@ import * as React from "react"
 import * as PopoverPrimitive from "@radix-ui/react-popover"
 
 import { cn } from "@/lib/utils"
+import { ExclusiveScope, useExclusiveOpen } from "@/components/ui/exclusive-open";
 
-const Popover = PopoverPrimitive.Root
+/** Root with app-wide "one open panel at a time" (see exclusive-open.ts). */
+function Popover({
+  open,
+  defaultOpen,
+  onOpenChange,
+  ...props
+}: React.ComponentProps<typeof PopoverPrimitive.Root>) {
+  const [isOpen, setOpen, chain] = useExclusiveOpen({ open, defaultOpen, onOpenChange })
+  return (
+    <ExclusiveScope chain={chain}>
+      <PopoverPrimitive.Root open={isOpen} onOpenChange={setOpen} {...props} />
+    </ExclusiveScope>
+  )
+}
 
 const PopoverTrigger = PopoverPrimitive.Trigger
 
@@ -21,7 +35,7 @@ const PopoverContent = React.forwardRef<
       align={align}
       sideOffset={sideOffset}
       className={cn(
-        "z-50 w-72 rounded-md border bg-popover p-4 text-popover-foreground shadow-md outline-none data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95 data-[side=bottom]:slide-in-from-top-2 data-[side=left]:slide-in-from-right-2 data-[side=right]:slide-in-from-left-2 data-[side=top]:slide-in-from-bottom-2 origin-[--radix-popover-content-transform-origin]",
+        "z-50 w-[var(--radix-popover-trigger-width)] rounded-md border bg-popover p-4 text-popover-foreground shadow-md outline-none data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95 data-[side=bottom]:slide-in-from-top-2 data-[side=left]:slide-in-from-right-2 data-[side=right]:slide-in-from-left-2 data-[side=top]:slide-in-from-bottom-2 origin-[--radix-popover-content-transform-origin]",
         className
       )}
       {...props}

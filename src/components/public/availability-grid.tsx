@@ -5,12 +5,15 @@ import { useRouter } from "next/navigation";
 import { useQuery } from "@tanstack/react-query";
 import { addDays, addMonths, format, isSameDay, isSameMonth } from "date-fns";
 import { fr } from "date-fns/locale";
-import { CalendarOff, ChevronLeft, ChevronRight, Loader2 } from "lucide-react";
+import { CalendarOff, ChevronLeft, ChevronRight, Loader2, Plane } from "lucide-react";
+
+import { formatAbsenceRange, reasonLabel, returnDate } from "@/lib/absences";
 
 import {
   dateKey,
   daysForView,
   type CalendarView,
+  type PublicAbsence,
   type PublicDay,
 } from "@/lib/availability";
 
@@ -19,6 +22,8 @@ type Payload = {
   from: string;
   to: string;
   days: PublicDay[];
+  /** The doctor's absences overlapping the range, for the notice above the grid. */
+  absences?: PublicAbsence[];
   unavailable?: boolean;
   error?: string;
 };
@@ -178,7 +183,31 @@ export function AvailabilityGrid({
             vous arrange.
           </span>
         </div>
-      ) : view === "month" ? (
+      ) : null}
+
+      {/* Why some or all slots are missing: said once, in words, rather than
+          left for the patient to infer from a run of hatched cells. */}
+      {!data?.unavailable && !isError && (data?.absences?.length ?? 0) > 0 ? (
+        <div className="flex flex-col gap-2">
+          {data!.absences!.map((a) => {
+            const back = returnDate(a);
+            return (
+              <div
+                key={`${a.starts_at}-${a.ends_at}`}
+                className="flex items-start gap-3 rounded-xl border border-amber-300/60 bg-amber-50 px-4 py-3 text-sm text-amber-900"
+              >
+                <Plane className="mt-0.5 h-4 w-4 shrink-0" />
+                <span>
+                  <strong>Médecin absent {formatAbsenceRange(a)}</strong> ({reasonLabel(a.reason, "public").toLowerCase()}).{" "}
+                  {a.note ? a.note : back ? `Reprise des consultations le ${back}.` : "Aucun rendez-vous possible sur cette période."}
+                </span>
+              </div>
+            );
+          })}
+        </div>
+      ) : null}
+
+      {data?.unavailable || isError ? null : view === "month" ? (
         <MonthGrid
           days={days}
           byDate={byDate}
@@ -260,6 +289,11 @@ function TimeGrid({
                   >
                     {format(d, "d MMM", { locale: fr })}
                   </span>
+                  {byDate.get(dateKey(d))?.absence ? (
+                    <span className="mt-1 inline-block rounded-full bg-amber-100 px-2 py-px text-[0.62rem] font-bold uppercase tracking-wide text-amber-800">
+                      Absent
+                    </span>
+                  ) : null}
                 </th>
               );
             })}
@@ -284,7 +318,13 @@ function TimeGrid({
                       key={dateKey(d)}
                       className="border-l border-slate-100 p-1"
                     >
-                      <div className="h-8 rounded-md bg-[repeating-linear-gradient(45deg,transparent,transparent_5px,rgb(241_245_249)_5px,rgb(241_245_249)_10px)]" />
+                      <div
+                        className={
+                          day?.absence?.wholeDay
+                            ? "h-8 rounded-md bg-[repeating-linear-gradient(45deg,transparent,transparent_5px,rgb(254_243_199)_5px,rgb(254_243_199)_10px)]"
+                            : "h-8 rounded-md bg-[repeating-linear-gradient(45deg,transparent,transparent_5px,rgb(241_245_249)_5px,rgb(241_245_249)_10px)]"
+                        }
+                      />
                     </td>
                   );
                 }
@@ -394,6 +434,10 @@ function MonthGrid({
               {free > 0 ? (
                 <span className="rounded-full bg-ok-soft px-2 py-0.5 text-[0.7rem] font-semibold tabular-nums text-ok-foreground">
                   {free} libre{free > 1 ? "s" : ""}
+                </span>
+              ) : day?.absence?.wholeDay ? (
+                <span className="rounded-full bg-amber-100 px-2 py-0.5 text-[0.65rem] font-bold text-amber-800">
+                  Absent
                 </span>
               ) : (
                 <span className="text-[0.7rem] text-slate-300">—</span>

@@ -13,6 +13,7 @@ import {
   parseApptDate,
   statusMeta,
 } from "@/lib/scheduler";
+import { reasonLabel, type Absence } from "@/lib/absences";
 import type { Appointment } from "@/types";
 
 /** Where a click on an empty day starts the new-appointment dialog. */
@@ -41,8 +42,11 @@ export function MonthGrid({
   onCreateSlot,
   onOpenAppointment,
   onOpenDay,
+  absences = [],
 }: {
   days: Date[];
+  /** The doctor's absences: the days they touch are tinted and labelled. */
+  absences?: Absence[];
   /** Any date inside the month being shown; decides which days read as "other". */
   anchor: Date;
   appointments: Appointment[];
@@ -91,6 +95,13 @@ export function MonthGrid({
             const closed = isPastDay(day);
             const outside = !isSameMonth(day, anchor);
             const overflow = list.length - MAX_VISIBLE;
+            const dayStart = new Date(day);
+            dayStart.setHours(0, 0, 0, 0);
+            const dayEnd = new Date(dayStart);
+            dayEnd.setDate(dayEnd.getDate() + 1);
+            const away = absences.find(
+              (x) => Date.parse(x.starts_at) < dayEnd.getTime() && Date.parse(x.ends_at) > dayStart.getTime(),
+            );
 
             return (
               <div
@@ -103,6 +114,7 @@ export function MonthGrid({
                     : "hover:bg-accent/30",
                   outside && !closed && "bg-muted/15",
                   isToday(day) && "bg-accent/25",
+                  away && "bg-amber-50/80",
                 )}
               >
                 <div className="mb-1.5 flex items-center justify-between">
@@ -118,7 +130,11 @@ export function MonthGrid({
                   >
                     {format(day, "d")}
                   </span>
-                  {closed ? null : (
+                  {away ? (
+                    <span className="rounded-full bg-amber-100 px-1.5 py-px text-[10px] font-bold text-amber-800">
+                      Absent · {reasonLabel(away.reason)}
+                    </span>
+                  ) : closed ? null : (
                     <Plus className="h-3.5 w-3.5 text-primary opacity-0 transition-opacity group-hover:opacity-50" />
                   )}
                 </div>

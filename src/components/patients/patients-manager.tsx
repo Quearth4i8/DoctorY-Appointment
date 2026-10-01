@@ -4,9 +4,8 @@ import { useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   Briefcase,
+  ChevronRight,
   Loader2,
-  Mail,
-  MapPin,
   Pencil,
   Phone,
   Search,
@@ -25,6 +24,7 @@ import { useDebounced } from "@/components/scheduler/patient-picker";
 import { avatarColor, initials } from "@/lib/avatar";
 import { cn, dossierLabel } from "@/lib/utils";
 import type { SafePatient } from "@/types";
+import { PatientDetailsDialog } from "./patient-details-dialog";
 import { PatientFormDialog } from "./patient-form-dialog";
 
 export function PatientsManager({
@@ -39,6 +39,8 @@ export function PatientsManager({
 
   const [formOpen, setFormOpen] = useState(false);
   const [editing, setEditing] = useState<SafePatient | null>(null);
+  const [viewing, setViewing] = useState<SafePatient | null>(null);
+  const [detailsOpen, setDetailsOpen] = useState(false);
 
   const {
     data: patients = [],
@@ -161,97 +163,168 @@ export function PatientsManager({
         </div>
       ) : (
         <ul className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
-          {patients.map((p, i) => {
-            const name = p.display_name || `${p.first_name} ${p.last_name}`.trim();
-            const meta = [
-              p.gender === "M" || p.gender === "F" ? p.gender : "",
-              p.age != null ? `${p.age} ans` : "",
-              dossierLabel(p),
-            ].filter(Boolean);
-
-            return (
-              <li
-                key={p.id}
-                style={{ animationDelay: `${Math.min(i, 10) * 25}ms` }}
-                className="group animate-slide-up rounded-2xl border bg-card p-4 shadow-card transition-all duration-200 hover:border-primary/25 hover:shadow-card-hover"
-              >
-                <div className="flex items-start gap-3">
-                  <div
-                    className={cn(
-                      "flex h-11 w-11 shrink-0 items-center justify-center rounded-xl text-sm font-semibold",
-                      avatarColor(p.id),
-                    )}
-                  >
-                    {initials(p.first_name, p.last_name)}
-                  </div>
-
-                  <div className="min-w-0 flex-1">
-                    <p className="truncate font-semibold text-foreground">
-                      {name || "—"}
-                    </p>
-                    <p className="truncate text-sm text-muted-foreground tnum">
-                      {meta.join(" · ") || "—"}
-                    </p>
-                  </div>
-
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    aria-label={`Modifier ${name}`}
-                    className="shrink-0 gap-1.5 text-muted-foreground opacity-0 transition-opacity focus-visible:opacity-100 group-hover:opacity-100 max-sm:opacity-100"
-                    onClick={() => {
-                      setEditing(p);
-                      setFormOpen(true);
-                    }}
-                  >
-                    <Pencil className="h-3.5 w-3.5" /> Modifier
-                  </Button>
-                </div>
-
-                {p.phone || p.email || p.job || p.insurance_type || p.address ? (
-                  <dl className="mt-3.5 grid gap-1.5 border-t pt-3.5 text-sm text-muted-foreground">
-                    {p.phone ? (
-                      <Row icon={Phone} className="tnum">
-                        {p.phone}
-                      </Row>
-                    ) : null}
-                    {p.email ? <Row icon={Mail}>{p.email}</Row> : null}
-                    {p.job ? <Row icon={Briefcase}>{p.job}</Row> : null}
-                    {p.insurance_type ? (
-                      <Row icon={ShieldCheck}>{p.insurance_type}</Row>
-                    ) : null}
-                    {p.address ? <Row icon={MapPin}>{p.address}</Row> : null}
-                  </dl>
-                ) : null}
-              </li>
-            );
-          })}
+          {patients.map((p, i) => (
+            <PatientCard
+              key={p.id}
+              patient={p}
+              index={i}
+              onOpen={() => {
+                setViewing(p);
+                setDetailsOpen(true);
+              }}
+              onEdit={() => {
+                setEditing(p);
+                setFormOpen(true);
+              }}
+            />
+          ))}
         </ul>
       )}
+
+      <PatientDetailsDialog
+        patient={viewing}
+        open={detailsOpen}
+        onOpenChange={setDetailsOpen}
+        onEdit={(p) => {
+          setDetailsOpen(false);
+          setEditing(p);
+          setFormOpen(true);
+        }}
+      />
 
       <PatientFormDialog
         open={formOpen}
         onOpenChange={setFormOpen}
         patient={editing}
-        onSaved={() => qc.invalidateQueries({ queryKey: ["patients-list"] })}
+        onSaved={() => {
+          qc.invalidateQueries({ queryKey: ["patients-list"] });
+          setViewing(null);
+        }}
       />
     </div>
+  );
+}
+
+/**
+ * One patient. The whole card opens the record; "Modifier" goes straight to
+ * the form. A div with a button role rather than a <button>, because a button
+ * may not contain another button.
+ */
+function PatientCard({
+  patient: p,
+  index,
+  onOpen,
+  onEdit,
+}: {
+  patient: SafePatient;
+  index: number;
+  onOpen: () => void;
+  onEdit: () => void;
+}) {
+  const name = p.display_name || `${p.first_name} ${p.last_name}`.trim() || "—";
+  const dossier = dossierLabel(p);
+
+  return (
+    <li style={{ animationDelay: `${Math.min(index, 10) * 25}ms` }} className="animate-slide-up">
+      <div
+        role="button"
+        tabIndex={0}
+        onClick={onOpen}
+        onKeyDown={(e) => {
+          if (e.key === "Enter" || e.key === " ") {
+            e.preventDefault();
+            onOpen();
+          }
+        }}
+        aria-label={`Voir la fiche de ${name}`}
+        className="group flex h-full cursor-pointer flex-col rounded-2xl border bg-card shadow-card transition-all duration-200 ease-spring hover:-translate-y-0.5 hover:border-primary/30 hover:shadow-card-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/60"
+      >
+        <div className="flex items-start gap-3.5 p-4 pb-3">
+          <span
+            className={cn(
+              "flex h-12 w-12 shrink-0 items-center justify-center rounded-xl text-[0.95rem] font-semibold",
+              avatarColor(p.id),
+            )}
+          >
+            {initials(p.first_name, p.last_name)}
+          </span>
+          <div className="min-w-0 flex-1">
+            <p className="truncate text-[0.98rem] font-semibold text-foreground">{name}</p>
+            <div className="mt-1.5 flex flex-wrap gap-1.5">
+              {p.gender === "M" || p.gender === "F" ? <Tag>{p.gender === "M" ? "Homme" : "Femme"}</Tag> : null}
+              {p.age != null ? <Tag>{p.age} ans</Tag> : null}
+              {dossier ? <Tag tone="primary">{dossier}</Tag> : null}
+            </div>
+          </div>
+          <Button
+            variant="ghost"
+            size="icon"
+            aria-label={`Modifier ${name}`}
+            title="Modifier"
+            className="h-8 w-8 shrink-0 text-muted-foreground opacity-0 transition-opacity focus-visible:opacity-100 group-hover:opacity-100 max-sm:opacity-100"
+            onClick={(e) => {
+              e.stopPropagation();
+              onEdit();
+            }}
+          >
+            <Pencil className="h-3.5 w-3.5" />
+          </Button>
+        </div>
+
+        <dl className="grid flex-1 gap-1.5 px-4 pb-3 text-sm text-muted-foreground">
+          <Row icon={Phone} className="tnum" empty="Pas de téléphone">
+            {p.phone}
+          </Row>
+          <Row icon={Briefcase} empty="Profession non renseignée">
+            {p.job}
+          </Row>
+          <Row icon={ShieldCheck} empty="Assurance non renseignée">
+            {p.insurance_type}
+          </Row>
+        </dl>
+
+        <div className="flex items-center justify-between border-t border-border/70 px-4 py-2.5 text-xs font-semibold text-muted-foreground transition-colors group-hover:text-primary">
+          Voir la fiche
+          <ChevronRight className="h-4 w-4 transition-transform duration-200 group-hover:translate-x-0.5" />
+        </div>
+      </div>
+    </li>
+  );
+}
+
+function Tag({ children, tone }: { children: React.ReactNode; tone?: "primary" }) {
+  return (
+    <span
+      className={cn(
+        "rounded-full px-2 py-0.5 text-[11px] font-semibold tnum",
+        tone === "primary" ? "bg-primary/10 text-primary" : "bg-secondary text-secondary-foreground",
+      )}
+    >
+      {children}
+    </span>
   );
 }
 
 function Row({
   icon: Icon,
   className,
+  empty,
   children,
 }: {
   icon: React.ComponentType<{ className?: string }>;
   className?: string;
+  /** Shown faded when the value is missing, so every card has the same rows. */
+  empty: string;
   children: React.ReactNode;
 }) {
   return (
     <div className="flex items-center gap-2">
       <Icon className="h-3.5 w-3.5 shrink-0 text-muted-foreground/60" />
-      <span className={cn("truncate", className)}>{children}</span>
+      {children ? (
+        <span className={cn("truncate text-foreground/80", className)}>{children}</span>
+      ) : (
+        <span className="truncate text-muted-foreground/50">{empty}</span>
+      )}
     </div>
   );
 }

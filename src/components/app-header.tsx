@@ -20,6 +20,7 @@ const TITLES: Record<string, string> = {
   "/agenda": "Agenda",
   "/patients": "Patients",
   "/demandes": "Demandes",
+  "/absences": "Absences",
   "/profil": "Profil",
   "/parametres": "Détails du médecin",
 };

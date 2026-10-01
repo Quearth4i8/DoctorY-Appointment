@@ -11,6 +11,7 @@ import {
   Mail,
   MapPin,
   Phone,
+  Plane,
   Stethoscope,
   type LucideIcon,
 } from "lucide-react";
@@ -25,7 +26,9 @@ import { RatingForm } from "@/components/public/rating-form";
 import { RatingStars } from "@/components/public/rating-stars";
 import { ScrollToTop } from "@/components/public/scroll-to-top";
 import { SiteFooter, SiteHeader } from "@/components/public/site-chrome";
+import { formatAbsenceRange, reasonLabel, returnDate, type Absence } from "@/lib/absences";
 import { kindMeta } from "@/lib/provider-kinds";
+import { createClient } from "@/lib/supabase/server";
 import { formatPhone, splitPhones, telHref } from "@/lib/phones";
 import { getProviderBySlug } from "@/lib/providers";
 import { cn } from "@/lib/utils";
@@ -81,6 +84,11 @@ export default async function ProviderPage({
   // The live slot grid is on the page, so the sidebar leads with the map
   // instead of a booking card that would only point back at the grid.
   const showMap = provider.booking_mode === "agenda" && provider.legacy_doctor_id !== null;
+  // Current or upcoming absences (next 60 days), shown under the header so a
+  // patient knows before looking for a slot.
+  const absences = provider.legacy_doctor_id
+    ? await listUpcomingAbsences(provider.legacy_doctor_id)
+    : [];
 
   /*
    * Catalogue → métier → spécialité → this establishment.
@@ -215,6 +223,37 @@ export default async function ProviderPage({
             </div>
         </div>
       </div>
+
+      {absences.length > 0 ? (
+        <div className="mx-auto flex w-full max-w-[1600px] flex-col gap-2 px-4 pt-6 sm:px-6 lg:px-8">
+          {absences.map((a) => {
+            const now = Date.now();
+            const ongoing = Date.parse(a.starts_at) <= now;
+            const back = returnDate(a);
+            return (
+              <div
+                key={`${a.starts_at}-${a.ends_at}`}
+                className="flex items-start gap-3 rounded-2xl border border-amber-300/60 bg-amber-50 px-5 py-4 text-amber-900"
+              >
+                <Plane className="mt-0.5 h-5 w-5 shrink-0" />
+                <div className="text-sm leading-relaxed">
+                  <p className="font-bold">
+                    {ongoing ? "Le médecin est actuellement absent" : "Absence prévue"} —{" "}
+                    {reasonLabel(a.reason, "public").toLowerCase()} {formatAbsenceRange(a)}.
+                  </p>
+                  <p>
+                    {a.note
+                      ? a.note
+                      : back
+                        ? `Reprise des consultations le ${back}. Aucun rendez-vous n'est possible pendant cette période.`
+                        : "Aucun rendez-vous n'est possible pendant cette période."}
+                  </p>
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      ) : null}
 
       <main className="mx-auto grid w-full max-w-[1600px] flex-1 items-start gap-6 px-4 py-8 sm:px-6 lg:grid-cols-[minmax(0,1fr)_23rem] lg:px-8">
         {/* `min-w-0` is load-bearing, not tidying.
@@ -697,4 +736,17 @@ function directionsUrl(provider: Provider): string {
       ? `${provider.latitude},${provider.longitude}`
       : [provider.address, provider.city].filter(Boolean).join(", ");
   return `https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(target)}`;
+}
+
+/** Absences running now or starting within 60 days. Empty on any failure. */
+async function listUpcomingAbsences(doctorId: string): Promise<Absence[]> {
+  const from = new Date();
+  const to = new Date(from.getTime() + 60 * 24 * 3600 * 1000);
+  const { data, error } = await createClient().rpc("public_absences", {
+    p_doctor: doctorId,
+    p_from: from.toISOString(),
+    p_to: to.toISOString(),
+  });
+  if (error) return [];
+  return (data ?? []) as Absence[];
 }

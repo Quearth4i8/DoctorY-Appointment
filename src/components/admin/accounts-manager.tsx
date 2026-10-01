@@ -17,6 +17,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Skeleton } from "@/components/ui/skeleton";
+import { useConfirm } from "@/components/ui/confirm-dialog";
 import {
   AdminApiError,
   fetchDoctors,
@@ -126,6 +127,7 @@ export function AccountsManager() {
       toast.error(err instanceof AdminApiError ? err.message : "Réaffectation impossible."),
   });
 
+  const confirm = useConfirm();
   const revoke = useMutation({
     mutationFn: (userId: string) => revokeStaff(userId),
     onSuccess: () => {
@@ -217,14 +219,14 @@ export function AccountsManager() {
                             size="icon"
                             title="Révoquer l'accès"
                             disabled={revoke.isPending}
-                            onClick={() => {
-                              if (
-                                window.confirm(
-                                  `Révoquer l'accès de ${s.full_name || s.email} ? Le compte de connexion n'est pas supprimé, seulement l'accès à l'application.`,
-                                )
-                              ) {
-                                revoke.mutate(s.user_id);
-                              }
+                            onClick={async () => {
+                              const ok = await confirm({
+                                title: "Révoquer l'accès ?",
+                                description: `Révoquer l'accès de ${s.full_name || s.email} ? Le compte de connexion n'est pas supprimé, seulement l'accès à l'application.`,
+                                confirmLabel: "Révoquer",
+                                destructive: true,
+                              });
+                              if (ok) revoke.mutate(s.user_id);
                             }}
                           >
                             {revoke.isPending ? (

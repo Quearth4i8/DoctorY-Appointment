@@ -9,6 +9,7 @@ import { toast } from "sonner";
 
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { useConfirm } from "@/components/ui/confirm-dialog";
 import {
   AdminApiError,
   deleteLicense,
@@ -43,6 +44,7 @@ function statusBadge(license: LicenseKey) {
 
 export function LicenseRow({ license }: { license: LicenseKey }) {
   const qc = useQueryClient();
+  const confirm = useConfirm();
   const [expanded, setExpanded] = useState(false);
 
   const { data: activations, isLoading } = useQuery({
@@ -137,12 +139,15 @@ export function LicenseRow({ license }: { license: LicenseKey }) {
               size="icon"
               title={license.revoked ? "Réactiver" : "Révoquer"}
               disabled={toggleRevoked.isPending}
-              onClick={() => {
+              onClick={async () => {
                 if (
                   license.revoked ||
-                  window.confirm(
-                    `Révoquer la clé de ${license.label || license.key} ? Toutes ses machines seront bloquées dès leur prochaine connexion. Vous pourrez la réactiver.`,
-                  )
+                  (await confirm({
+                    title: "Révoquer cette clé ?",
+                    description: `Révoquer la clé de ${license.label || license.key} ? Toutes ses machines seront bloquées dès leur prochaine connexion. Vous pourrez la réactiver.`,
+                    confirmLabel: "Révoquer",
+                    destructive: true,
+                  }))
                 ) {
                   toggleRevoked.mutate();
                 }
@@ -161,14 +166,14 @@ export function LicenseRow({ license }: { license: LicenseKey }) {
               size="icon"
               title="Supprimer"
               disabled={remove.isPending}
-              onClick={() => {
-                if (
-                  window.confirm(
-                    `Supprimer la clé de ${license.label || license.key} ? Toutes ses machines perdront l'accès dès leur prochaine connexion. Cette action est irréversible.`,
-                  )
-                ) {
-                  remove.mutate();
-                }
+              onClick={async () => {
+                const ok = await confirm({
+                  title: "Supprimer cette clé ?",
+                  description: `Supprimer la clé de ${license.label || license.key} ? Toutes ses machines perdront l'accès dès leur prochaine connexion. Cette action est irréversible.`,
+                  confirmLabel: "Supprimer",
+                  destructive: true,
+                });
+                if (ok) remove.mutate();
               }}
             >
               {remove.isPending ? (
@@ -221,14 +226,13 @@ export function LicenseRow({ license }: { license: LicenseKey }) {
                       variant="outline"
                       size="sm"
                       disabled={release.isPending}
-                      onClick={() => {
-                        if (
-                          window.confirm(
-                            "Libérer cette machine ? Le médecin pourra activer un nouvel ordinateur à sa place. Attention : cela ne bloque pas cette machine — si elle se reconnecte, elle reprendra la place libre. Pour bloquer, révoquez la clé.",
-                          )
-                        ) {
-                          release.mutate(a.id);
-                        }
+                      onClick={async () => {
+                        const ok = await confirm({
+                          title: "Libérer cette machine ?",
+                          description: "Libérer cette machine ? Le médecin pourra activer un nouvel ordinateur à sa place. Attention : cela ne bloque pas cette machine — si elle se reconnecte, elle reprendra la place libre. Pour bloquer, révoquez la clé.",
+                          confirmLabel: "Libérer",
+                        });
+                        if (ok) release.mutate(a.id);
                       }}
                     >
                       Libérer

@@ -22,6 +22,7 @@ import { Button } from "@/components/ui/button";
 import { Combobox } from "@/components/ui/combobox";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { TimePicker } from "@/components/ui/time-picker";
 import {
   SpecialtyTagInput,
   type SpecialtyValue,
@@ -433,18 +434,18 @@ export function DoctorSettingsForm({
                           key={k}
                           className="flex items-center gap-1.5 rounded-lg border border-border/60 bg-muted/25 px-1.5 py-1"
                         >
-                          <Input
-                            type="time"
+                          <TimePicker
                             value={r[0]}
-                            onChange={(e) => setRange(i, k, 0, e.target.value)}
-                            className="h-9 w-[8.25rem] border-transparent bg-card px-2.5 tnum"
+                            onChange={(v) => setRange(i, k, 0, v)}
+                            step={30}
+                            className="h-9 w-[7.5rem] border-transparent px-2.5 shadow-none"
                           />
                           <span className="text-muted-foreground">–</span>
-                          <Input
-                            type="time"
+                          <TimePicker
                             value={r[1]}
-                            onChange={(e) => setRange(i, k, 1, e.target.value)}
-                            className="h-9 w-[8.25rem] border-transparent bg-card px-2.5 tnum"
+                            onChange={(v) => setRange(i, k, 1, v)}
+                            step={30}
+                            className="h-9 w-[7.5rem] border-transparent px-2.5 shadow-none"
                           />
                           {day.ranges.length > 1 ? (
                             <button

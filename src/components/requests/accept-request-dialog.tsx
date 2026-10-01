@@ -30,6 +30,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Button } from "@/components/ui/button";
+import { DatePicker } from "@/components/ui/date-picker";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { ApiError, acceptRequest, searchPatients } from "@/lib/client-api";
@@ -302,13 +303,7 @@ export function AcceptRequestDialog({
           <div className="grid grid-cols-3 gap-3">
             <div className="space-y-1.5">
               <Label className="text-sm font-medium">Date</Label>
-              <Input
-                type="date"
-                value={date}
-                min={todayKey()}
-                onChange={(e) => setDate(e.target.value)}
-                className="tnum"
-              />
+              <DatePicker value={date} min={todayKey()} onChange={setDate} compact />
             </div>
             <div className="space-y-1.5">
               <Label className="text-sm font-medium">Heure</Label>

@@ -34,6 +34,7 @@ import {
   statusMeta,
 } from "@/lib/scheduler";
 import type { Appointment } from "@/types";
+import { reasonLabel, type Absence } from "@/lib/absences";
 
 const GRID_HEIGHT = (DAY_END_MIN - DAY_START_MIN) * PX_PER_MIN;
 
@@ -213,9 +214,12 @@ export function WeekGrid({
   onReschedule,
   activeId,
   setActiveId,
+  absences = [],
 }: {
   days: Date[];
   appointments: Appointment[];
+  /** The doctor's absences: drawn as hatched bands behind the day's slots. */
+  absences?: Absence[];
   onCreateSlot: (day: Date, minute: number) => void;
   onOpenAppointment: (a: Appointment) => void;
   onReschedule: (appt: Appointment, day: Date, minute: number) => void;
@@ -402,6 +406,8 @@ export function WeekGrid({
                     />
                   ))}
 
+                  <AbsenceBands day={day} absences={absences} />
+
                   {/* Appointment blocks */}
                   {positioned.map((pos) => (
                     <AppointmentBlock
@@ -443,6 +449,47 @@ export function WeekGrid({
         ) : null}
       </DragOverlay>
     </DndContext>
+  );
+}
+
+/**
+ * The part of each absence that falls inside this day's visible hours, as a
+ * hatched band. Behind the appointments and transparent to the pointer: the
+ * secretary can still book over an absence (an urgent case, a home visit), it
+ * just can never be done without seeing it.
+ */
+function AbsenceBands({ day, absences }: { day: Date; absences: Absence[] }) {
+  if (absences.length === 0) return null;
+  const midnight = new Date(day);
+  midnight.setHours(0, 0, 0, 0);
+  const viewStart = midnight.getTime() + DAY_START_MIN * 60_000;
+  const viewEnd = midnight.getTime() + DAY_END_MIN * 60_000;
+
+  return (
+    <>
+      {absences.map((a) => {
+        const start = Math.max(Date.parse(a.starts_at), viewStart);
+        const end = Math.min(Date.parse(a.ends_at), viewEnd);
+        if (!(end > start)) return null;
+        const startMin = (start - midnight.getTime()) / 60_000;
+        const endMin = (end - midnight.getTime()) / 60_000;
+        return (
+          <div
+            key={a.id ?? a.starts_at}
+            aria-hidden
+            className="pointer-events-none absolute inset-x-0.5 z-[5] overflow-hidden rounded-md border border-amber-300/70 bg-[repeating-linear-gradient(45deg,rgb(254_243_199/0.75),rgb(254_243_199/0.75)_6px,rgb(255_251_235/0.6)_6px,rgb(255_251_235/0.6)_12px)]"
+            style={{
+              top: (startMin - DAY_START_MIN) * PX_PER_MIN,
+              height: (endMin - startMin) * PX_PER_MIN,
+            }}
+          >
+            <span className="absolute left-1.5 top-1 rounded bg-amber-100/90 px-1.5 py-px text-[10px] font-bold text-amber-800">
+              Absent · {reasonLabel(a.reason)}
+            </span>
+          </div>
+        );
+      })}
+    </>
   );
 }
 

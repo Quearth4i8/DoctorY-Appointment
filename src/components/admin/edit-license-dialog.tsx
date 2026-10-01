@@ -14,6 +14,7 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog";
+import { DatePicker } from "@/components/ui/date-picker";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { AdminApiError, updateLicense, type LicenseKey } from "@/lib/admin/client-api";
@@ -85,12 +86,7 @@ export function EditLicenseDialog({ license }: { license: LicenseKey }) {
             </div>
             <div className="space-y-1.5">
               <Label htmlFor="edit-expires">Expiration</Label>
-              <Input
-                id="edit-expires"
-                type="date"
-                value={expiresAt}
-                onChange={(e) => setExpiresAt(e.target.value)}
-              />
+              <DatePicker id="edit-expires" value={expiresAt} onChange={setExpiresAt} clearable placeholder="Sans expiration" />
             </div>
           </div>
 

@@ -4,8 +4,22 @@ import * as React from "react";
 import * as DropdownMenuPrimitive from "@radix-ui/react-dropdown-menu";
 
 import { cn } from "@/lib/utils";
+import { ExclusiveScope, useExclusiveOpen } from "@/components/ui/exclusive-open";
 
-const DropdownMenu = DropdownMenuPrimitive.Root;
+/** Root with app-wide "one open panel at a time" (see exclusive-open.ts). */
+function DropdownMenu({
+  open,
+  defaultOpen,
+  onOpenChange,
+  ...props
+}: React.ComponentProps<typeof DropdownMenuPrimitive.Root>) {
+  const [isOpen, setOpen, chain] = useExclusiveOpen({ open, defaultOpen, onOpenChange });
+  return (
+    <ExclusiveScope chain={chain}>
+      <DropdownMenuPrimitive.Root open={isOpen} onOpenChange={setOpen} {...props} />
+    </ExclusiveScope>
+  );
+}
 const DropdownMenuTrigger = DropdownMenuPrimitive.Trigger;
 const DropdownMenuGroup = DropdownMenuPrimitive.Group;
 
@@ -18,7 +32,8 @@ const DropdownMenuContent = React.forwardRef<
       ref={ref}
       sideOffset={sideOffset}
       className={cn(
-        "z-50 min-w-[13rem] overflow-hidden rounded-xl border border-border bg-popover p-1.5 text-popover-foreground shadow-modal",
+        // Same width as the button that opened it, like every other dropdown.
+        "z-50 w-[var(--radix-dropdown-menu-trigger-width)] overflow-hidden rounded-xl border border-border bg-popover p-1.5 text-popover-foreground shadow-modal",
         "data-[state=open]:animate-in data-[state=closed]:animate-out",
         "data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0",
         "data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95",

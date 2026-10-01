@@ -14,7 +14,15 @@ export type PublicDay = {
   ranges: [string, string][];
   /** Empty when the practice is closed that day. */
   slots: PublicSlot[];
+  /**
+   * Set when the doctor is away for part or all of that day's hours — the
+   * reason shown to patients. Slots inside the absence are simply not offered.
+   */
+  absence?: { reason: string; note: string; wholeDay: boolean };
 };
+
+/** An absence as the public grid receives it (see public_absences()). */
+export type PublicAbsence = { starts_at: string; ends_at: string; reason: string; note: string };
 
 export const SLOT_MINUTES = 30;
 
@@ -50,15 +58,21 @@ export function buildAvailability({
   days,
   hours,
   busy,
+  absences = [],
   now = new Date(),
   slotMinutes = SLOT_MINUTES,
 }: {
   days: Date[];
   hours: DayHours[];
   busy: { start: string; end: string }[];
+  /** Periods the doctor is away: no slot inside one is offered. */
+  absences?: PublicAbsence[];
   now?: Date;
   slotMinutes?: number;
 }): PublicDay[] {
+  const awayMs = absences
+    .map((a) => ({ ...a, start: Date.parse(a.starts_at), end: Date.parse(a.ends_at) }))
+    .filter((a) => !Number.isNaN(a.start) && !Number.isNaN(a.end));
   const byDay = new Map(hours.map((h) => [h.day, h.ranges]));
 
   // Compare in epoch ms; the ranges arrive as ISO strings.
@@ -72,6 +86,9 @@ export function buildAvailability({
     const ranges = byDay.get(isoDay(day)) ?? [];
     const slots: PublicSlot[] = [];
     const seen = new Set<number>();
+    let skippedForAbsence = 0;
+    let offered = 0;
+    let absence: PublicDay["absence"];
 
     for (const [from, to] of ranges) {
       const startMin = minutesOf(from);
@@ -94,6 +111,15 @@ export function buildAvailability({
         // in time anyway.
         if (startMs < earliest) continue;
 
+        // The doctor is away: not offered at all, as if outside opening hours.
+        const away = awayMs.find((a) => startMs < a.end && endMs > a.start);
+        if (away) {
+          skippedForAbsence++;
+          absence ??= { reason: away.reason, note: away.note, wholeDay: false };
+          continue;
+        }
+        offered++;
+
         const taken = busyMs.some((b) => startMs < b.end && endMs > b.start);
 
         slots.push({
@@ -103,10 +129,13 @@ export function buildAvailability({
       }
     }
 
+    if (absence && offered === 0 && skippedForAbsence > 0) absence.wholeDay = true;
+
     return {
       date: dateKey(day),
       ranges: ranges.map((r) => [r[0], r[1]] as [string, string]),
       slots,
+      ...(absence ? { absence } : {}),
     };
   });
 }

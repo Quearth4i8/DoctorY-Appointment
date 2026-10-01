@@ -9,6 +9,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Skeleton } from "@/components/ui/skeleton";
+import { useConfirm } from "@/components/ui/confirm-dialog";
 import {
   Select,
   SelectContent,
@@ -346,6 +347,8 @@ function NewPatientForm({
   const [age, setAge] = useState("");
   const [saving, setSaving] = useState(false);
 
+  const confirm = useConfirm();
+
   async function submit(force = false) {
     if (!lastName.trim()) {
       toast.error("Le nom est obligatoire.");
@@ -385,9 +388,11 @@ function NewPatientForm({
       toast.success("Patient ajouté.");
     } catch (err) {
       if (err instanceof ApiError && err.code === "DUPLICATE_PATIENT") {
-        const ok = window.confirm(
-          `${err.message}\n\nVoulez-vous quand même créer un nouveau patient ?`,
-        );
+        const ok = await confirm({
+          title: "Un patient porte déjà ce nom",
+          description: `${err.message} Voulez-vous quand même créer un nouveau patient ?`,
+          confirmLabel: "Créer quand même",
+        });
         if (ok) {
           setSaving(false);
           await submit(true);

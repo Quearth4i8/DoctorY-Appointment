@@ -311,7 +311,7 @@ export function Combobox({
         sideOffset={6}
         onKeyDown={onKeyDown}
         className={cn(
-          "w-[var(--radix-popover-trigger-width)] min-w-[13rem] overflow-hidden rounded-xl border border-border bg-popover p-0 shadow-modal",
+          "w-[var(--radix-popover-trigger-width)] overflow-hidden rounded-xl border border-border bg-popover p-0 shadow-modal",
           contentClassName,
         )}
       >

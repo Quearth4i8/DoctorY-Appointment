@@ -3,11 +3,13 @@ import { NextResponse } from "next/server";
 import { getDoctorBySlug } from "@/lib/doctors";
 import { getProviderAgenda } from "@/lib/providers";
 import { listBusyRanges } from "@/lib/front-desk";
+import { createClient } from "@/lib/supabase/server";
 import {
   buildAvailability,
   dateKey,
   daysForView,
   type CalendarView,
+  type PublicAbsence,
 } from "@/lib/availability";
 import type { DayHours, HourRange, OpeningRange } from "@/types";
 
@@ -114,12 +116,16 @@ export async function GET(req: Request) {
   const to = dateKey(days[days.length - 1]);
 
   try {
-    const busy = await listBusyRanges(agenda.doctorId, from, to);
+    const [busy, absences] = await Promise.all([
+      listBusyRanges(agenda.doctorId, from, to),
+      listPublicAbsences(agenda.doctorId, from, to),
+    ]);
     return NextResponse.json({
       view,
       from,
       to,
-      days: buildAvailability({ days, hours: agenda.hours, busy }),
+      days: buildAvailability({ days, hours: agenda.hours, busy, absences }),
+      absences,
     });
   } catch {
     return NextResponse.json(
@@ -127,4 +133,21 @@ export async function GET(req: Request) {
       { status: 500 },
     );
   }
+}
+
+/**
+ * The doctor's absences over the range. A failure here must not take the
+ * whole agenda down with it — an empty list just means slots are offered as
+ * usual, which is what happened before absences existed.
+ */
+async function listPublicAbsences(doctorId: string, from: string, to: string): Promise<PublicAbsence[]> {
+  const end = new Date(`${to}T00:00:00`);
+  end.setDate(end.getDate() + 1);
+  const { data, error } = await createClient().rpc("public_absences", {
+    p_doctor: doctorId,
+    p_from: new Date(`${from}T00:00:00`).toISOString(),
+    p_to: end.toISOString(),
+  });
+  if (error) return [];
+  return (data ?? []) as PublicAbsence[];
 }

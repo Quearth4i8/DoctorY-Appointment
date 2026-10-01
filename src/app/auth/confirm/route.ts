@@ -57,5 +57,34 @@ export async function GET(request: Request) {
     return done("email_partial");
   }
 
+  await finishPairing(supabase);
+
   return done("email_confirmed");
+}
+
+/**
+ * A secretary's sign-up confirmation is also where her account joins the
+ * cabinet. The pairing key rode along in her user metadata because signUp had
+ * no session to claim with (see signup-form.tsx); now there is one. Without
+ * this, confirming landed her on "Accès non autorisé" until she happened to
+ * sign in again through the login form, which does the same thing.
+ */
+async function finishPairing(supabase: ReturnType<typeof createClient>) {
+  const { data } = await supabase.auth.getUser();
+  const meta = data.user?.user_metadata as
+    | { pairing_key?: string | null; full_name?: string | null }
+    | undefined;
+  if (!meta?.pairing_key) return;
+
+  const { error } = await supabase.rpc("claim_staff_with_key", {
+    p_key: meta.pairing_key,
+    p_full_name: meta.full_name ?? "",
+  });
+  const raised = error ? `${error.message} ${error.details ?? ""}` : "";
+
+  // Attached (now or earlier): spend the key so this runs once.
+  if (!error || raised.includes("ALREADY_STAFF")) {
+    await supabase.auth.updateUser({ data: { pairing_key: null } });
+  }
+  // Any other failure is left for the login form, which explains it.
 }

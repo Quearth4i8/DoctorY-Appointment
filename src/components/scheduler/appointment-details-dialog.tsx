@@ -32,7 +32,10 @@ import {
 } from "@/components/ui/select";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
+import { DatePicker } from "@/components/ui/date-picker";
+import { TimePicker } from "@/components/ui/time-picker";
 import { Input } from "@/components/ui/input";
+import { useConfirm } from "@/components/ui/confirm-dialog";
 import {
   ApiError,
   deleteAppointment,
@@ -61,6 +64,7 @@ export function AppointmentDetailsDialog({
   onOpenChange: (v: boolean) => void;
   onChanged: () => void;
 }) {
+  const confirm = useConfirm();
   const [busy, setBusy] = useState(false);
   const [editing, setEditing] = useState(false);
 
@@ -138,7 +142,13 @@ export function AppointmentDetailsDialog({
   }
 
   async function remove() {
-    if (!window.confirm("Supprimer définitivement ce rendez-vous ?")) return;
+    const ok = await confirm({
+      title: "Supprimer ce rendez-vous ?",
+      description: "Il sera retiré définitivement de l'agenda du cabinet.",
+      confirmLabel: "Supprimer",
+      destructive: true,
+    });
+    if (!ok) return;
     setBusy(true);
     try {
       await deleteAppointment(appointment!.id);
@@ -168,23 +178,11 @@ export function AppointmentDetailsDialog({
             <div className="grid grid-cols-2 gap-3">
               <div className="space-y-1.5">
                 <Label>Date</Label>
-                <Input
-                  type="date"
-                  value={dateStr}
-                  min={todayKey()}
-                  onChange={(e) => setDateStr(e.target.value)}
-                  className="h-11 text-base"
-                />
+                <DatePicker value={dateStr} min={todayKey()} onChange={setDateStr} compact />
               </div>
               <div className="space-y-1.5">
                 <Label>Heure</Label>
-                <Input
-                  type="time"
-                  value={timeStr}
-                  onChange={(e) => setTimeStr(e.target.value)}
-                  step={300}
-                  className="h-11 text-base"
-                />
+                <TimePicker value={timeStr} onChange={setTimeStr} step={5} from="07:00" to="21:00" />
               </div>
             </div>
 

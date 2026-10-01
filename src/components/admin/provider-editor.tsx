@@ -16,6 +16,7 @@ import {
 import { toast } from "sonner";
 
 import { Combobox } from "@/components/ui/combobox";
+import { DateTimeFields, TimePicker } from "@/components/ui/time-picker";
 import { GOVERNORATES, citiesFor, governorateOf } from "@/lib/tunisia";
 import {
   Select,
@@ -389,26 +390,26 @@ export function ProviderEditor({ id }: { id: string }) {
                 const idx = p.hours.indexOf(r);
                 return (
                   <span key={idx} className="flex items-center gap-1.5">
-                    <input
-                      type="time"
+                    <TimePicker
                       value={r.opens_at}
-                      onChange={(e) => {
+                      onChange={(v) => {
                         const next = [...p.hours];
-                        next[idx] = { ...r, opens_at: e.target.value };
+                        next[idx] = { ...r, opens_at: v };
                         set("hours", next);
                       }}
-                      className="h-9 rounded-md border border-input bg-card px-2 font-mono text-sm"
+                      step={30}
+                      className="h-9 w-[7.5rem]"
                     />
                     <span className="text-muted-foreground">–</span>
-                    <input
-                      type="time"
+                    <TimePicker
                       value={r.closes_at}
-                      onChange={(e) => {
+                      onChange={(v) => {
                         const next = [...p.hours];
-                        next[idx] = { ...r, closes_at: e.target.value };
+                        next[idx] = { ...r, closes_at: v };
                         set("hours", next);
                       }}
-                      className="h-9 rounded-md border border-input bg-card px-2 font-mono text-sm"
+                      step={30}
+                      className="h-9 w-[7.5rem]"
                     />
                     <button
                       type="button"
@@ -451,26 +452,24 @@ export function ProviderEditor({ id }: { id: string }) {
           ) : null}
           {p.duty.map((d, idx) => (
             <div key={idx} className="flex flex-wrap items-center gap-2 border-t py-2.5 first:border-0">
-              <input
-                type="datetime-local"
+              <DateTimeFields
                 value={toLocalInput(d.starts_at)}
-                onChange={(e) => {
+                onChange={(v) => {
                   const next = [...p.duty];
-                  next[idx] = { ...d, starts_at: e.target.value };
+                  next[idx] = { ...d, starts_at: v };
                   set("duty", next);
                 }}
-                className="h-9 rounded-md border border-input bg-card px-2 font-mono text-sm"
+                className="w-[22rem]"
               />
               <span className="text-muted-foreground">→</span>
-              <input
-                type="datetime-local"
+              <DateTimeFields
                 value={toLocalInput(d.ends_at)}
-                onChange={(e) => {
+                onChange={(v) => {
                   const next = [...p.duty];
-                  next[idx] = { ...d, ends_at: e.target.value };
+                  next[idx] = { ...d, ends_at: v };
                   set("duty", next);
                 }}
-                className="h-9 rounded-md border border-input bg-card px-2 font-mono text-sm"
+                className="w-[22rem]"
               />
               <Select
                 value={d.kind}
