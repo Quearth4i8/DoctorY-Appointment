@@ -71,7 +71,7 @@ export default async function DemandePage({
       className="relative flex min-h-screen items-center justify-center bg-cover bg-center p-4 sm:p-8"
       style={{ backgroundImage: "url(/back-login.png)" }}
     >
-      <div className="w-full max-w-2xl">
+      <div className="w-full max-w-2xl lg:max-w-5xl">
         <Link href="/" className="mb-6 flex items-center justify-center gap-3">
           <Image
             src="/logo-doctory.png"
@@ -91,7 +91,7 @@ export default async function DemandePage({
             step, so send them back rather than collecting a request nobody can
             place. */}
         {!published || !hasSlot ? (
-          <div className="rounded-2xl bg-white p-9 text-center shadow-2xl">
+          <div className="mx-auto max-w-2xl rounded-2xl bg-white p-9 text-center shadow-2xl">
             <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-full bg-warn-soft">
               <CalendarX2 className="h-7 w-7 text-warn-foreground" />
             </div>
@@ -121,6 +121,7 @@ export default async function DemandePage({
               doctorName={`${published.title} ${published.full_name}`.trim()}
               doctorSpecialty={published.specialty}
               doctorPhoto={published.photo_url}
+              hours={published.hours}
               at={at}
             />
           </Suspense>

@@ -16,6 +16,7 @@ import {
   Stethoscope,
   UserPlus,
   UserRound,
+  Clock3,
 } from "lucide-react";
 
 import {
@@ -25,7 +26,11 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { DatePicker } from "@/components/ui/date-picker";
+import { todayKey } from "@/lib/scheduler";
+import { openingState, type OpeningState } from "@/lib/opening";
 import { turnstileEnabled } from "@/lib/turnstile-enabled";
+import type { DayHours } from "@/types";
 
 declare global {
   interface Window {
@@ -70,12 +75,15 @@ export function RequestForm({
   doctorName,
   doctorSpecialty,
   doctorPhoto,
+  hours = [],
   at,
 }: {
   doctorSlug: string;
   doctorName: string;
   doctorSpecialty: string;
   doctorPhoto: string;
+  /** The cabinet's weekly hours, to say when the request will be read. */
+  hours?: DayHours[];
   /** "YYYY-MM-DDTHH:mm" — validated by the page before we get here. */
   at: string;
 }) {
@@ -88,6 +96,15 @@ export function RequestForm({
   const [sending, setSending] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [sent, setSent] = useState(false);
+  // The patient confirms they understood how requests are handled: in
+  // opening hours, in order of arrival, and not a booking until called back.
+  const [understood, setUnderstood] = useState(false);
+  // Computed in the browser only: the server's clock may be UTC, and a value
+  // that differs between the two renders would also break hydration.
+  const [opening, setOpening] = useState<OpeningState>({ openNow: true, nextOpening: null });
+  useEffect(() => {
+    setOpening(openingState(hours));
+  }, [hours]);
 
   // null = not checked yet, true/false = server's answer for dossier+phone.
   const [verified, setVerified] = useState<boolean | null>(null);
@@ -191,6 +208,9 @@ export function RequestForm({
     setError(null);
 
     if (blocked) return setError(UNAVAILABLE);
+    if (!understood) {
+      return setError("Cochez la case pour confirmer que vous avez lu comment votre demande sera traitée.");
+    }
 
     if (existing === null) {
       return setError("Indiquez si vous êtes déjà patient ou non.");
@@ -286,7 +306,7 @@ export function RequestForm({
 
   if (sent) {
     return (
-      <div className="rounded-2xl bg-white p-9 text-center shadow-2xl">
+      <div className="mx-auto max-w-2xl rounded-2xl bg-white p-9 text-center shadow-2xl">
         <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-full bg-teal-50">
           <CheckCircle2 className="h-8 w-8 text-teal-600" />
         </div>
@@ -301,6 +321,12 @@ export function RequestForm({
         <p className="mt-4 inline-flex items-center gap-2 rounded-xl bg-slate-50 px-4 py-2.5 text-sm font-medium capitalize text-slate-700">
           <CalendarCheck className="h-4 w-4 text-teal-600" />
           {format(chosen, "EEEE d MMMM 'à' HH:mm", { locale: fr })}
+        </p>
+
+        <p className="mx-auto mt-4 max-w-md text-sm leading-relaxed text-slate-500">
+          {!opening.openNow && opening.nextOpening
+            ? `Le cabinet est fermé en ce moment : votre demande sera traitée à partir du ${format(opening.nextOpening, "EEEE d MMMM 'à' HH:mm", { locale: fr })}, dans son ordre d'arrivée.`
+            : "Les demandes sont traitées pendant les heures d'ouverture, dans leur ordre d'arrivée."}
         </p>
 
 
@@ -353,6 +379,11 @@ export function RequestForm({
           </div>
         </div>
 
+        {/* Two columns from lg up: who you are on the left, how the request
+            is handled and the send button on the right. One narrow column
+            made the page scroll on a wide screen with the sides left empty. */}
+        <div className="grid items-start gap-x-8 lg:grid-cols-2">
+          <div className="min-w-0">
         {/* Honeypot: off-screen and hidden from assistive tech, so only a bot
             filling every field will set it. */}
         <div aria-hidden className="pointer-events-none absolute -left-[9999px]">
@@ -506,19 +537,68 @@ export function RequestForm({
                 </SelectContent>
               </Select>
             </Field>
-            <Field label="Date de naissance" required hint="Format jj/mm/aaaa">
-              <input
-                type="text"
-                placeholder="jj/mm/aaaa"
-                inputMode="numeric"
+            {/* A calendar with month/year lists, not a text box: on a phone
+                "jj/mm/aaaa" opened a bare number pad with no slashes, and a
+                typo only surfaced on submit. Picks arrive as YYYY-MM-DD,
+                which the check in onSubmit already accepts. */}
+            <Field label="Date de naissance" required>
+              <DatePicker
                 value={form.date_of_birth}
-                onChange={(e) => set("date_of_birth", e.target.value)}
-                required
-                className={INPUT}
+                onChange={(v) => set("date_of_birth", v)}
+                max={todayKey()}
+                dropdowns
+                placeholder="Choisir votre date de naissance"
+                className={TRIGGER}
               />
             </Field>
           </div>
         ) : null}
+
+          </div>
+
+          <div className="min-w-0 lg:sticky lg:top-6">
+        {/* How a request is handled — said before sending, in full, so nobody
+            reads silence on a Sunday night as a refusal, or a request as a
+            booking. */}
+        <div className="mt-6 rounded-xl border border-sky-200 bg-sky-50/70 p-4 text-sm text-sky-950 lg:mt-0">
+          <p className="flex items-center gap-2 font-bold">
+            <Clock3 className="h-4 w-4 shrink-0 text-sky-700" />
+            Comment votre demande est traitée
+          </p>
+          <ul className="mt-2.5 flex list-disc flex-col gap-1.5 pl-5 leading-relaxed marker:text-sky-400">
+            <li>
+              Le secrétariat traite les demandes{" "}
+              <strong>uniquement pendant les heures d&apos;ouverture du cabinet</strong>.
+            </li>
+            {!opening.openNow && opening.nextOpening ? (
+              <li>
+                Le cabinet est fermé en ce moment : votre demande sera traitée{" "}
+                <strong>
+                  à partir du {format(opening.nextOpening, "EEEE d MMMM 'à' HH:mm", { locale: fr })}
+                </strong>
+                .
+              </li>
+            ) : null}
+            <li>
+              Les demandes sont traitées <strong>dans leur ordre d&apos;arrivée</strong> : si
+              plusieurs patients demandent le même créneau, la première demande reçue est
+              prioritaire.
+            </li>
+            <li>
+              Une demande <strong>ne réserve pas</strong> le créneau : le secrétariat vous
+              appelle pour le confirmer ou vous proposer un autre horaire.
+            </li>
+          </ul>
+          <label className="mt-3.5 flex cursor-pointer items-start gap-2.5 rounded-lg bg-white/70 px-3 py-2.5 font-medium">
+            <input
+              type="checkbox"
+              checked={understood}
+              onChange={(e) => setUnderstood(e.target.checked)}
+              className="mt-0.5"
+            />
+            <span>J&apos;ai compris : ma demande sera traitée pendant les heures d&apos;ouverture et ne réserve pas le créneau.</span>
+          </label>
+        </div>
 
         {gateOn && siteKey ? <div ref={widgetRef} className="mt-5" /> : null}
 
@@ -543,7 +623,7 @@ export function RequestForm({
 
         <button
           type="submit"
-          disabled={sending || blocked}
+          disabled={sending || blocked || !understood}
           className="mt-6 flex h-12 w-full items-center justify-center gap-2 rounded-xl bg-teal-600 font-semibold text-white transition-colors hover:bg-teal-700 disabled:opacity-60"
         >
           {sending ? (
@@ -558,6 +638,8 @@ export function RequestForm({
           Ce créneau n&apos;est pas réservé tant que le secrétariat ne vous a pas
           rappelé. En cas d&apos;urgence, contactez directement les urgences.
         </p>
+          </div>
+        </div>
       </form>
     </>
   );

@@ -294,7 +294,20 @@ export async function listRequests(
   doctorId: string,
   status: string | null,
 ): Promise<unknown[]> {
-  let query = createClient()
+  const supabase = createClient();
+
+  // Only the requests that arrived under the linking code connected NOW —
+  // not those received while another app was linked, which come back if that
+  // app is linked again (see 20261001020000_request_link_key.sql). Null when
+  // that migration has not run yet: nothing is filtered, as before.
+  const { data: doc } = await supabase
+    .from("doctors")
+    .select("link_key")
+    .eq("id", doctorId)
+    .maybeSingle();
+  const linkKey = (doc as { link_key?: string } | null)?.link_key ?? null;
+
+  let query = supabase
     .from("appointment_requests")
     .select(REQUEST_FIELDS)
     .eq("doctor_id", doctorId)
@@ -302,12 +315,60 @@ export async function listRequests(
     .limit(200);
 
   if (status && status !== "toutes") query = query.eq("status", status);
+  if (linkKey !== null) query = query.eq("link_key", linkKey);
 
   const { data, error } = await query;
   if (error) {
     throw new FrontDeskError(500, "Impossible de charger les demandes.");
   }
-  return data ?? [];
+  return reverifyDossiers(doctorId, (data ?? []) as unknown as RequestRow[]);
+}
+
+type RequestRow = {
+  is_existing_patient: boolean;
+  numero_dossier: string;
+  phone: string;
+  dossier_verified: boolean;
+  dossier_found?: boolean;
+};
+
+/**
+ * "Déjà patient · vérifié" as of NOW, not as of the day the request came in.
+ *
+ * The flag stored on a request was checked against whichever app was linked
+ * then. After a relink, or once a patient has been archived, it can claim a
+ * dossier this practice no longer has. So the claim is re-checked against the
+ * current patient list: `dossier_found` says the number exists here,
+ * `dossier_verified` that it also matches the phone given.
+ */
+async function reverifyDossiers(doctorId: string, rows: RequestRow[]): Promise<RequestRow[]> {
+  const claimed = [...new Set(rows.filter((r) => r.is_existing_patient && r.numero_dossier).map((r) => r.numero_dossier))];
+  if (claimed.length === 0) return rows;
+
+  const { data, error } = await createClient()
+    .from("patients")
+    .select("numero_dossier, phone")
+    .eq("doctor_id", doctorId)
+    .is("archived_at", null)
+    .in("numero_dossier", claimed);
+  // Could not check: keep what was stored rather than marking everyone unknown.
+  if (error) return rows;
+
+  const digits = (v: string) => v.replace(/\D/g, "").slice(-8);
+  const byDossier = new Map<string, string[]>();
+  for (const p of (data ?? []) as { numero_dossier: string; phone: string }[]) {
+    byDossier.set(p.numero_dossier, [...(byDossier.get(p.numero_dossier) ?? []), digits(p.phone)]);
+  }
+
+  return rows.map((r) => {
+    if (!r.is_existing_patient || !r.numero_dossier) return r;
+    const phones = byDossier.get(r.numero_dossier);
+    return {
+      ...r,
+      dossier_found: Boolean(phones),
+      dossier_verified: Boolean(phones?.includes(digits(r.phone))),
+    };
+  });
 }
 
 export async function listAppointments(

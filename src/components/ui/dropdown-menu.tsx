@@ -32,8 +32,10 @@ const DropdownMenuContent = React.forwardRef<
       ref={ref}
       sideOffset={sideOffset}
       className={cn(
-        // Same width as the button that opened it, like every other dropdown.
-        "z-50 w-[var(--radix-dropdown-menu-trigger-width)] overflow-hidden rounded-xl border border-border bg-popover p-1.5 text-popover-foreground shadow-modal",
+        // Never narrower than the button that opened it. Unlike a form's
+        // option list, a menu carries titles and descriptions: squeezed to
+        // exactly a short button's width, every line wrapped after two words.
+        "z-50 min-w-[max(var(--radix-dropdown-menu-trigger-width),13rem)] overflow-hidden rounded-xl border border-border bg-popover p-1.5 text-popover-foreground shadow-modal",
         "data-[state=open]:animate-in data-[state=closed]:animate-out",
         "data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0",
         "data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95",

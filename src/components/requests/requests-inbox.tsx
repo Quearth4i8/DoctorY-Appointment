@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { format, formatDistanceToNow } from "date-fns";
 import { fr } from "date-fns/locale";
@@ -16,6 +16,7 @@ import {
   Sun,
   Sunset,
   UserPlus,
+  Users,
   X,
 } from "lucide-react";
 import { toast } from "sonner";
@@ -67,6 +68,37 @@ export function RequestsInbox({
     qc.invalidateQueries({ queryKey: ["requests"] });
   }
 
+  /*
+   * First come, first served.
+   *
+   * Pending requests are listed oldest first — the order the cabinet promises
+   * patients on the request form. And when several pending requests ask for
+   * the very same slot, each card says where it stands ("1re sur 3"), so the
+   * secretary can give the slot to whoever asked first and call the others
+   * back with another time.
+   */
+  const ordered = useMemo(() => {
+    if (tab !== "en_attente") return requests;
+    return [...requests].sort((a, b) => a.created_at.localeCompare(b.created_at));
+  }, [requests, tab]);
+
+  const slotRank = useMemo(() => {
+    const groups = new Map<string, AppointmentRequest[]>();
+    for (const r of requests) {
+      if (r.status !== "en_attente" || !r.preferred_at) continue;
+      const key = new Date(r.preferred_at).toISOString();
+      groups.set(key, [...(groups.get(key) ?? []), r]);
+    }
+    const rank = new Map<string, { position: number; total: number }>();
+    for (const list of groups.values()) {
+      if (list.length < 2) continue;
+      list
+        .sort((a, b) => a.created_at.localeCompare(b.created_at))
+        .forEach((r, i) => rank.set(r.id, { position: i + 1, total: list.length }));
+    }
+    return rank;
+  }, [requests]);
+
   const confirm = useConfirm();
 
   async function refuse(r: AppointmentRequest) {
@@ -97,7 +129,11 @@ export function RequestsInbox({
             Demandes de rendez-vous
           </h1>
           <p className="mt-0.5 text-sm text-muted-foreground tnum">
-            {isLoading ? "Chargement…" : `${requests.length}`}
+            {isLoading
+              ? "Chargement…"
+              : tab === "en_attente"
+                ? `${requests.length} · par ordre d'arrivée, la plus ancienne d'abord`
+                : `${requests.length}`}
           </p>
         </div>
 
@@ -149,17 +185,36 @@ export function RequestsInbox({
         </div>
       ) : (
         <ul className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
-          {requests.map((r, i) => {
+          {ordered.map((r, i) => {
             const name = `${r.first_name} ${r.last_name}`.trim() || r.last_name;
             const badge = STATUS_BADGE[r.status];
             const pending = r.status === "en_attente";
+            const contest = slotRank.get(r.id);
 
             return (
               <li
                 key={r.id}
                 style={{ animationDelay: `${Math.min(i, 10) * 25}ms` }}
-                className="flex animate-slide-up flex-col rounded-2xl border bg-card p-5 shadow-card"
+                className={cn(
+                  "flex animate-slide-up flex-col rounded-2xl border bg-card p-5 shadow-card",
+                  contest && "border-amber-300 ring-1 ring-amber-200",
+                )}
               >
+                {contest ? (
+                  <div
+                    className={cn(
+                      "-mx-5 -mt-5 mb-4 flex items-center gap-2 rounded-t-2xl px-5 py-2 text-xs font-semibold",
+                      contest.position === 1
+                        ? "bg-amber-100 text-amber-900"
+                        : "bg-amber-50 text-amber-800",
+                    )}
+                  >
+                    <Users className="h-3.5 w-3.5 shrink-0" />
+                    {contest.position === 1 ? "1re" : `${contest.position}e`} demande sur{" "}
+                    {contest.total} pour ce créneau
+                    {contest.position === 1 ? " · prioritaire" : ""}
+                  </div>
+                ) : null}
                 <div className="flex items-start gap-3">
                   <span
                     className={cn(
@@ -221,6 +276,13 @@ export function RequestsInbox({
                             <ShieldCheck className="h-3 w-3" />
                             vérifié
                           </span>
+                        ) : r.dossier_found === false ? (
+                          // Checked against the patients the current app
+                          // sends: this number is not one of them (another
+                          // practice's file, an old link, or a typo).
+                          <span className="inline-flex items-center gap-1 rounded-full bg-danger-soft px-2 py-0.5 text-xs font-medium text-danger-foreground">
+                            dossier introuvable
+                          </span>
                         ) : (
                           <span className="inline-flex items-center gap-1 rounded-full bg-warn-soft px-2 py-0.5 text-xs font-medium text-warn-foreground">
                             non vérifié
@@ -249,8 +311,15 @@ export function RequestsInbox({
                   ) : null}
                 </dl>
 
-                <p className="mt-3 text-xs text-muted-foreground">
-                  Reçue{" "}
+                <p
+                  className="mt-3 text-xs text-muted-foreground tnum"
+                  title={format(new Date(r.created_at), "EEEE d MMMM yyyy 'à' HH:mm:ss", { locale: fr })}
+                >
+                  Reçue le{" "}
+                  <span className="font-medium text-foreground/80">
+                    {format(new Date(r.created_at), "d MMM 'à' HH:mm:ss", { locale: fr })}
+                  </span>{" "}
+                  ·{" "}
                   {formatDistanceToNow(new Date(r.created_at), {
                     addSuffix: true,
                     locale: fr,

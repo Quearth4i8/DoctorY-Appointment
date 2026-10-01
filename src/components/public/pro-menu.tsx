@@ -38,7 +38,7 @@ export function ProMenu() {
         <ChevronDown className="h-3.5 w-3.5 text-muted-foreground transition-transform duration-200 group-data-[state=open]:rotate-180" />
       </DropdownMenuTrigger>
 
-      <DropdownMenuContent align="end" >
+      <DropdownMenuContent align="end" className="w-[19rem]">
         <DropdownMenuLabel className="font-normal">
           <p className="text-sm font-bold">Vous exercez dans la santé ?</p>
           <p className="mt-0.5 text-xs leading-relaxed text-muted-foreground">

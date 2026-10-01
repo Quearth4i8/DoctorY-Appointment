@@ -136,8 +136,10 @@ export type AppointmentRequest = {
   is_existing_patient: boolean;
   /** Their file number, when they claim to be an existing patient. */
   numero_dossier: string;
-  /** True when that file number + phone matched a real record in doctor.db. */
+  /** True when that file number + phone match a current patient of this practice. */
   dossier_verified: boolean;
+  /** Whether the file number exists among this practice's current patients. */
+  dossier_found?: boolean;
   preferred_at: string | null;
   preferred_period: "" | "matin" | "apres_midi";
   status: RequestStatus;
