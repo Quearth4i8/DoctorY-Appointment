@@ -456,3 +456,14 @@ body {
     transform: scaleX(1);
   }
 }
+
+/* Text selection: a soft green from the brand family instead of the browser's
+   default blue. Translucent so the selected text keeps its own colour and
+   stays readable — in inputs too. */
+::selection {
+  background-color: hsl(152 62% 42% / 0.28);
+  color: inherit;
+}
+.dark ::selection {
+  background-color: hsl(152 58% 52% / 0.34);
+}
