@@ -33,6 +33,21 @@ export type DesktopRelease = {
 
 export const RELEASES: DesktopRelease[] = [
   {
+    version: "2.3.8",
+    date: "2026-10-04",
+    sizeMb: 164,
+    title: "Notifications, agenda repensé et lecture des bilans scannés",
+    notes: [
+      "Les photos et scans de bilans sont lus directement par l'application, en quelques secondes, sans rien installer.",
+      "Une cloche de notifications signale les patients et rendez-vous ajoutés par le secrétariat, et les mises à jour.",
+      "Rappel sonore quelques minutes avant chaque rendez-vous.",
+      "Agenda repensé : vues jour, semaine et mois.",
+      "Résultats d'analyses en vert, orange ou rouge selon le profil du patient (diabétique, enceinte…).",
+      "Nouvelle page Fiscalité : TVA, retenues à la source et impôt sur le revenu calculés automatiquement.",
+    ],
+    downloadable: true,
+  },
+  {
     version: "2.3.7",
     date: "2026-09-30",
     sizeMb: 86,
