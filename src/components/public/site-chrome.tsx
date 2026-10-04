@@ -3,7 +3,7 @@ import Link from "next/link";
 import { Download } from "lucide-react";
 
 import { ProMenu } from "@/components/public/pro-menu";
-import { SiteNav } from "@/components/public/site-nav";
+import { SiteMobileNav, SiteNav } from "@/components/public/site-nav";
 import { LEGAL_PAGES } from "@/lib/legal";
 
 /**
@@ -22,7 +22,9 @@ export function SiteHeader() {
   return (
     <header className="sticky top-0 z-40 border-b border-border-warm bg-paper/85 backdrop-blur-md">
       <div className="mx-auto flex h-[4.5rem] w-full max-w-[1600px] items-center gap-6 px-4 sm:px-6 lg:px-8">
-        <Link href="/" className="flex shrink-0 items-center gap-2.5">
+        {/* Phones and tablets: the menu button, at the left like the panel it opens. */}
+        <SiteMobileNav />
+        <Link href="/" className="-ml-3 flex shrink-0 items-center gap-2.5 lg:ml-0">
           <Image
             src="/logo-doctory.png"
             alt="DoctorY"

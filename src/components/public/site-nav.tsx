@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import Link from "next/link";
+import { createPortal } from "react-dom";
 import { usePathname } from "next/navigation";
 import {
   ArrowRight,
@@ -12,9 +13,11 @@ import {
   Download,
   Flag,
   History,
+  Menu as MenuIcon,
   MessageSquareHeart,
   ShieldCheck,
   Sparkles,
+  X,
   type LucideIcon,
 } from "lucide-react";
 
@@ -355,6 +358,208 @@ function MenuPanel({
           </Link>
         ) : null}
       </div>
+    </div>
+  );
+}
+
+/**
+ * The same sections, for phones and tablets — where the hover menus above are
+ * hidden (lg:flex) and nothing used to replace them, so a visitor on a phone
+ * had no way to reach "Pharmacie de garde" or the directory from the header.
+ *
+ * A button opens a panel from the left: each section is a row that unfolds
+ * its links (the section you are in starts unfolded). Tapping a link, the
+ * backdrop, × or Escape closes it; the page behind does not scroll meanwhile.
+ */
+export function SiteMobileNav() {
+  const pathname = usePathname();
+  const [open, setOpen] = useState(false);
+  const [expanded, setExpanded] = useState<number | null>(null);
+  // The panel is portalled to <body> once on the client: the header's
+  // backdrop blur makes it the containing block of anything `fixed` inside
+  // it, which squeezed the panel into the header's 72px.
+  const [mounted, setMounted] = useState(false);
+  useEffect(() => setMounted(true), []);
+
+  const close = useCallback(() => setOpen(false), []);
+
+  // A new page closes the panel; opening it unfolds the current section.
+  useEffect(() => close(), [pathname, close]);
+  useEffect(() => {
+    if (!open) return;
+    const current = NAV.findIndex((item) => item.href !== "/" && matches(pathname, item));
+    setExpanded(current >= 0 ? current : null);
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") close();
+    };
+    const overflow = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    window.addEventListener("keydown", onKey);
+    return () => {
+      document.body.style.overflow = overflow;
+      window.removeEventListener("keydown", onKey);
+    };
+  }, [open, pathname, close]);
+
+  return (
+    <div className="lg:hidden">
+      <button
+        type="button"
+        onClick={() => setOpen(true)}
+        aria-label="Ouvrir le menu"
+        aria-expanded={open}
+        className="flex h-10 w-10 items-center justify-center rounded-xl border border-input text-foreground transition-colors hover:bg-paper-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/60"
+      >
+        <MenuIcon className="h-5 w-5" />
+      </button>
+
+      {/* Always mounted, so it slides rather than pops. */}
+      {mounted ? createPortal(
+      <div
+        className={cn("fixed inset-0 z-50 lg:hidden", open ? "visible" : "pointer-events-none invisible")}
+        aria-hidden={!open}
+      >
+        <div
+          onClick={close}
+          className={cn(
+            "absolute inset-0 bg-foreground/30 backdrop-blur-[2px] transition-opacity duration-300",
+            open ? "opacity-100" : "opacity-0",
+          )}
+        />
+        <nav
+          aria-label="Menu principal"
+          className={cn(
+            "absolute inset-y-0 left-0 flex w-[min(22rem,88vw)] flex-col bg-paper shadow-modal transition-transform duration-300 ease-spring",
+            open ? "translate-x-0" : "-translate-x-full",
+          )}
+        >
+          <div className="flex h-[4.5rem] shrink-0 items-center justify-between border-b border-border-warm px-5">
+            <span className="text-base font-extrabold tracking-tight">Menu</span>
+            <button
+              type="button"
+              onClick={close}
+              aria-label="Fermer le menu"
+              className="flex h-9 w-9 items-center justify-center rounded-xl text-muted-foreground transition-colors hover:bg-paper-muted hover:text-foreground"
+            >
+              <X className="h-5 w-5" />
+            </button>
+          </div>
+
+          <ul className="flex-1 overflow-y-auto px-3 py-3">
+            {NAV.map((item, i) => {
+              const active = matches(pathname, item);
+              const links = item.links ?? [];
+              const isOpen = expanded === i;
+              return (
+                <li key={item.href} className="border-b border-border-warm/70 last:border-b-0">
+                  <div className="flex items-center">
+                    <Link
+                      href={item.href}
+                      onClick={close}
+                      className={cn(
+                        "flex flex-1 items-center gap-2 rounded-xl px-3 py-3.5 text-[0.95rem] font-semibold transition-colors",
+                        active ? "text-primary" : "text-foreground hover:text-primary",
+                      )}
+                    >
+                      {item.label}
+                      {item.badge ? (
+                        <span className="rounded-full bg-primary px-2 py-0.5 text-[0.6rem] font-extrabold uppercase tracking-wider text-primary-foreground">
+                          {item.badge}
+                        </span>
+                      ) : null}
+                    </Link>
+                    {links.length > 0 ? (
+                      <button
+                        type="button"
+                        onClick={() => setExpanded(isOpen ? null : i)}
+                        aria-label={isOpen ? `Replier ${item.label}` : `Déplier ${item.label}`}
+                        aria-expanded={isOpen}
+                        className="flex h-10 w-10 items-center justify-center rounded-xl text-muted-foreground transition-colors hover:bg-paper-muted"
+                      >
+                        <ChevronDown className={cn("h-4 w-4 transition-transform duration-200", isOpen && "rotate-180")} />
+                      </button>
+                    ) : null}
+                  </div>
+
+                  {links.length > 0 ? (
+                    <div
+                      className={cn(
+                        "grid transition-[grid-template-rows] duration-300 ease-spring",
+                        isOpen ? "grid-rows-[1fr]" : "grid-rows-[0fr]",
+                      )}
+                    >
+                      <div className="overflow-hidden">
+                        <ul className="flex flex-col gap-0.5 pb-3">
+                          {links.map((link) => {
+                            const Icon = link.icon;
+                            const inner = (
+                              <>
+                                <span
+                                  className={cn(
+                                    "flex h-9 w-9 shrink-0 items-center justify-center rounded-xl text-base",
+                                    link.chip ?? "bg-primary/10",
+                                  )}
+                                >
+                                  {/* `glyph` is the icon's colour class, as in the desktop menu. */}
+                                  <Icon className={cn("h-4 w-4", link.glyph ?? "text-primary")} />
+                                </span>
+                                <span className="min-w-0">
+                                  <span className="block text-sm font-semibold text-foreground">{link.label}</span>
+                                  {link.description ? (
+                                    <span className="block truncate text-xs text-muted-foreground">{link.description}</span>
+                                  ) : null}
+                                </span>
+                              </>
+                            );
+                            const cls = "flex items-center gap-3 rounded-xl px-3 py-2 transition-colors hover:bg-paper-muted";
+                            return (
+                              <li key={link.href}>
+                                {link.download ? (
+                                  <a href={link.href} onClick={close} className={cls}>
+                                    {inner}
+                                  </a>
+                                ) : (
+                                  <Link href={link.href} onClick={close} className={cls}>
+                                    {inner}
+                                  </Link>
+                                )}
+                              </li>
+                            );
+                          })}
+                          {item.more ? (
+                            <li>
+                              <Link
+                                href={item.more.href}
+                                onClick={close}
+                                className="flex items-center gap-1.5 px-3 py-2 text-sm font-semibold text-primary"
+                              >
+                                {item.more.label} <ArrowRight className="h-3.5 w-3.5" />
+                              </Link>
+                            </li>
+                          ) : null}
+                        </ul>
+                      </div>
+                    </div>
+                  ) : null}
+                </li>
+              );
+            })}
+          </ul>
+
+          <div className="shrink-0 border-t border-border-warm p-4">
+            <Link
+              href="/telecharger"
+              onClick={close}
+              className="flex h-12 items-center justify-center gap-2 rounded-xl bg-primary text-sm font-bold text-primary-foreground shadow-card"
+            >
+              <Download className="h-4 w-4" />
+              Télécharger l’application
+            </Link>
+          </div>
+        </nav>
+      </div>,
+      document.body,
+      ) : null}
     </div>
   );
 }

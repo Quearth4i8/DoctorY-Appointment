@@ -34,7 +34,8 @@ export function ProMenu() {
             dans la santé ?", because "Connexion" alone invites a patient to
             look for an account that does not exist. The label says what the
             control does; the icon and the heading say whose it is. */}
-        <span>Connexion</span>
+        {/* Icon only on a phone, where the header also carries the menu button. */}
+        <span className="hidden sm:inline">Connexion</span>
         <ChevronDown className="h-3.5 w-3.5 text-muted-foreground transition-transform duration-200 group-data-[state=open]:rotate-180" />
       </DropdownMenuTrigger>
 
