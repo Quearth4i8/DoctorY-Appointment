@@ -1,9 +1,10 @@
 "use client";
 
-import { useState } from "react";
+import { useRef, useState } from "react";
 
 import { AdminHeader } from "./admin-header";
 import { AdminSidebar } from "./admin-sidebar";
+import { ScrollToTop } from "@/components/public/scroll-to-top";
 
 /**
  * Deliberately not AppShell: that sidebar/header pair is built around a
@@ -13,6 +14,7 @@ import { AdminSidebar } from "./admin-sidebar";
  */
 export function AdminShell({ children }: { children: React.ReactNode }) {
   const [mobileOpen, setMobileOpen] = useState(false);
+  const mainRef = useRef<HTMLElement>(null);
 
   return (
 /*
@@ -33,7 +35,10 @@ export function AdminShell({ children }: { children: React.ReactNode }) {
       <AdminSidebar mobileOpen={mobileOpen} onMobileClose={() => setMobileOpen(false)} />
       <div className="flex min-w-0 flex-1 flex-col">
         <AdminHeader onMenuClick={() => setMobileOpen(true)} />
-        <main className="flex-1 px-4 py-6 sm:px-6 lg:px-8">{children}</main>
+        <main ref={mainRef} className="flex-1 px-4 py-6 sm:px-6 lg:px-8">
+          {children}
+        </main>
+        <ScrollToTop showAfter={250} centerOn={mainRef} />
       </div>
     </div>
   );

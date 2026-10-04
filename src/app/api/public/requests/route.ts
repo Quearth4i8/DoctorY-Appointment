@@ -6,7 +6,7 @@ import { findPatientByDossier } from "@/lib/front-desk";
 import { getDoctorBySlug } from "@/lib/doctors";
 import { clientIp, hashIp, normalisePhone } from "@/lib/request-intake";
 import { verifyTurnstile } from "@/lib/turnstile";
-import { formatAbsenceRange, returnDate, type Absence } from "@/lib/absences";
+import { formatAbsenceRange, practiceWallToInstant, returnDate, type Absence } from "@/lib/absences";
 
 export const dynamic = "force-dynamic";
 
@@ -129,7 +129,12 @@ export async function POST(req: Request) {
   //     catches a stale tab or a hand-made URL, and says why rather than
   //     letting the secretary discover a request for a day nobody is in.
   if (preferredAt) {
-    const absent = await absenceAt(body.doctor_slug ?? "", preferredAt);
+    // The slot is the practice's wall-clock time; check the absence at the
+    // real instant it stands for, not at the same digits on the server's clock.
+    const checkAt = body.preferred_at && /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}$/.test(body.preferred_at)
+      ? new Date(practiceWallToInstant(body.preferred_at)).toISOString()
+      : preferredAt;
+    const absent = await absenceAt(body.doctor_slug ?? "", checkAt);
     if (absent) {
       const back = returnDate(absent);
       return bad(

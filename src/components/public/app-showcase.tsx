@@ -9,6 +9,8 @@ import {
   ClipboardList,
   Download,
   FileText,
+  FlaskConical,
+  Landmark,
   LayoutDashboard,
   Stethoscope,
   Users,
@@ -43,7 +45,13 @@ const SLIDES = [
     src: "/app/consultations.jpg",
     label: "Consultations",
     icon: Stethoscope,
-    text: "L'historique de chaque patient, ses analyses et ses courbes.",
+    text: "L'historique de chaque patient et son résumé clinique, d'un coup d'œil.",
+  },
+  {
+    src: "/app/analyses.jpg",
+    label: "Analyses",
+    icon: FlaskConical,
+    text: "Résultats en vert, orange ou rouge selon le profil du patient ; bilans scannés lus automatiquement.",
   },
   {
     src: "/app/exploration.jpg",
@@ -55,13 +63,19 @@ const SLIDES = [
     src: "/app/rendez-vous.jpg",
     label: "Rendez-vous",
     icon: CalendarDays,
-    text: "L'agenda du cabinet, synchronisé avec les demandes du site.",
+    text: "Vues jour, semaine et mois, synchronisées avec le secrétariat, et un rappel avant chaque patient.",
   },
   {
     src: "/app/formulaires.jpg",
     label: "Formulaires CNAM",
     icon: FileText,
     text: "BS, AP1 et APCI remplis et imprimés sur le formulaire papier.",
+  },
+  {
+    src: "/app/fiscalite.jpg",
+    label: "Fiscalité",
+    icon: Landmark,
+    text: "TVA, retenues à la source et impôt sur le revenu calculés à partir de votre activité.",
   },
 ] as const;
 
@@ -130,8 +144,8 @@ export function AppShowcase({
             </h2>
 
             <p className="max-w-xl text-[0.98rem] leading-relaxed text-background/70">
-              Dossiers patients, consultations, ordonnances, formulaires CNAM et
-              agenda : DoctorY rassemble votre quotidien sur votre ordinateur, et
+              Dossiers patients, consultations, analyses, ordonnances, formulaires
+              CNAM, agenda et fiscalité : DoctorY rassemble votre quotidien sur votre ordinateur, et
               relie votre agenda aux demandes de rendez-vous reçues sur ce site.
             </p>
 
@@ -141,6 +155,8 @@ export function AppShowcase({
                 "Fonctionne sans connexion internet",
                 "Ordonnances imprimées sur votre papier",
                 "Agenda synchronisé avec votre secrétariat",
+                "Bilans scannés lus automatiquement",
+                "Notifications et rappels de rendez-vous",
               ].map((item) => (
                 <li key={item} className="flex items-start gap-2.5 text-sm text-background/85">
                   <span className="mt-1 flex h-4 w-4 shrink-0 items-center justify-center rounded-full bg-primary/25">
@@ -223,7 +239,7 @@ export function AppShowcase({
             </div>
 
             {/* Tabs: pick a screen; the running bar shows when it moves on. */}
-            <div className="mt-3 grid grid-cols-3 gap-2 sm:grid-cols-6" role="tablist" aria-label="Écrans de l'application">
+            <div className="mt-3 grid grid-cols-4 gap-2 lg:grid-cols-8" role="tablist" aria-label="Écrans de l'application">
               {SLIDES.map((slide, i) => {
                 const Icon = slide.icon;
                 const on = i === active;

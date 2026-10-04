@@ -356,7 +356,7 @@ function AbsenceRow({
       className={cn(
         "flex flex-wrap items-center gap-4 rounded-2xl border bg-card px-5 py-4 shadow-card",
         highlight && "border-warn/40 bg-warn-soft/40",
-        muted && "opacity-70",
+        muted && "[&>span]:opacity-60 [&>div]:opacity-70",
       )}
     >
       <span
@@ -376,12 +376,12 @@ function AbsenceRow({
           {absence.note ? `« ${absence.note} »` : back ? `Reprise le ${back}` : "Aucun message aux patients"}
         </p>
       </div>
-      {!muted ? (
-        <Button variant="ghost" size="sm" onClick={remove} disabled={deleting} className="text-destructive hover:text-destructive">
-          {deleting ? <Loader2 className="animate-spin" /> : <Trash2 />}
-          Supprimer
-        </Button>
-      ) : null}
+      {/* Past ones too: an absence entered by mistake should not linger in
+          the history. */}
+      <Button variant="ghost" size="sm" onClick={remove} disabled={deleting} className="text-destructive hover:text-destructive">
+        {deleting ? <Loader2 className="animate-spin" /> : <Trash2 />}
+        Supprimer
+      </Button>
     </li>
   );
 }

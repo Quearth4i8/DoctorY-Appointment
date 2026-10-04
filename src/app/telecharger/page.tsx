@@ -26,7 +26,7 @@ import { cn } from "@/lib/utils";
 export const metadata: Metadata = {
   title: "Télécharger l'application — DoctorY",
   description:
-    "Téléchargez DoctorY pour Windows : dossiers patients, consultations, ordonnances, formulaires CNAM et agenda, sur votre ordinateur. Toutes les versions et leurs nouveautés.",
+    "Téléchargez DoctorY pour Windows : dossiers patients, consultations, analyses, ordonnances, formulaires CNAM, agenda et fiscalité, sur votre ordinateur. Toutes les versions et leurs nouveautés.",
 };
 
 const STEPS = [
@@ -84,8 +84,9 @@ export default function DownloadPage() {
                 <span className="text-primary">pour Windows</span>
               </h1>
               <p className="max-w-xl text-[1.02rem] leading-relaxed text-foreground/75">
-                Dossiers patients, consultations, ordonnances, formulaires CNAM
-                et agenda, sur l&apos;ordinateur de votre cabinet.
+                Dossiers patients, consultations, analyses, ordonnances,
+                formulaires CNAM, agenda et fiscalité, sur l&apos;ordinateur de
+                votre cabinet.
               </p>
 
               <div className="flex flex-col gap-3 rounded-2xl border border-border-warm bg-card p-5 shadow-card">

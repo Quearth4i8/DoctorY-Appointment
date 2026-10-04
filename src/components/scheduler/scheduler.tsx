@@ -125,6 +125,7 @@ export function Scheduler({ initialWeek = null }: { initialWeek?: InitialWeek })
     },
     staleTime: 60_000,
   });
+  const upcomingAbsences = absences.filter((a) => Date.parse(a.ends_at) > Date.now());
 
   function invalidate() {
     qc.invalidateQueries({ queryKey: ["week"] });
@@ -304,12 +305,14 @@ export function Scheduler({ initialWeek = null }: { initialWeek?: InitialWeek })
         </div>
       ) : null}
 
-      {/* Absences in view — said in words above the grid, not only as bands. */}
-      {absences.length > 0 ? (
+      {/* Absences in view — said in words above the grid, not only as bands.
+          Only those not over yet: a finished absence stays as a band on its
+          day, but no longer needs announcing. */}
+      {upcomingAbsences.length > 0 ? (
         <div className="flex flex-wrap items-center gap-x-4 gap-y-2 rounded-xl border border-amber-300/60 bg-amber-50 px-4 py-3 text-sm text-amber-900">
           <CalendarOff className="h-4 w-4 shrink-0" />
           <div className="flex min-w-0 flex-1 flex-col gap-0.5">
-            {absences.map((a) => (
+            {upcomingAbsences.map((a) => (
               <span key={a.id}>
                 <strong>{reasonLabel(a.reason)}</strong> {formatAbsenceRange(a)} — les patients ne peuvent pas réserver.
               </span>

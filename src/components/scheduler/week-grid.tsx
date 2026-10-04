@@ -34,7 +34,7 @@ import {
   statusMeta,
 } from "@/lib/scheduler";
 import type { Appointment } from "@/types";
-import { reasonLabel, type Absence } from "@/lib/absences";
+import { reasonLabel, toPracticeLocalMs, type Absence } from "@/lib/absences";
 
 const GRID_HEIGHT = (DAY_END_MIN - DAY_START_MIN) * PX_PER_MIN;
 
@@ -468,8 +468,10 @@ function AbsenceBands({ day, absences }: { day: Date; absences: Absence[] }) {
   return (
     <>
       {absences.map((a) => {
-        const start = Math.max(Date.parse(a.starts_at), viewStart);
-        const end = Math.min(Date.parse(a.ends_at), viewEnd);
+        // The practice's wall-clock time, like the grid itself — right even
+        // when this browser is set to another time zone.
+        const start = Math.max(toPracticeLocalMs(Date.parse(a.starts_at)), viewStart);
+        const end = Math.min(toPracticeLocalMs(Date.parse(a.ends_at)), viewEnd);
         if (!(end > start)) return null;
         const startMin = (start - midnight.getTime()) / 60_000;
         const endMin = (end - midnight.getTime()) / 60_000;

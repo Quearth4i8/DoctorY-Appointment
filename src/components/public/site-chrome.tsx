@@ -1,6 +1,6 @@
 import Image from "next/image";
 import Link from "next/link";
-import { Download, Home } from "lucide-react";
+import { Download } from "lucide-react";
 
 import { ProMenu } from "@/components/public/pro-menu";
 import { SiteNav } from "@/components/public/site-nav";
@@ -46,18 +46,6 @@ export function SiteHeader() {
           >
             <Download className="h-4 w-4 transition-transform duration-base ease-spring group-hover/dl:translate-y-0.5" />
             <span className="hidden sm:inline">Télécharger</span>
-          </Link>
-
-          {/* Icon-only, so it reads as a shortcut rather than a second
-              "Accueil" competing with the one in the nav. Same height and
-              radius as the menu trigger beside it. */}
-          <Link
-            href="/"
-            aria-label="Accueil"
-            title="Accueil"
-            className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border border-input text-muted-foreground transition-colors hover:bg-paper-muted hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/60"
-          >
-            <Home className="h-4 w-4" />
           </Link>
 
           <ProMenu />

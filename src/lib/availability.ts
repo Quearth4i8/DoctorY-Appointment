@@ -1,4 +1,5 @@
 import type { DayHours } from "@/types";
+import { toPracticeLocalMs } from "@/lib/absences";
 
 /** One bookable moment on the public grid. */
 export type PublicSlot = {
@@ -70,8 +71,10 @@ export function buildAvailability({
   now?: Date;
   slotMinutes?: number;
 }): PublicDay[] {
+  // Absences are instants; slots below are the practice's wall-clock times.
+  // Bring the absences onto the same clock first (see toPracticeLocalMs).
   const awayMs = absences
-    .map((a) => ({ ...a, start: Date.parse(a.starts_at), end: Date.parse(a.ends_at) }))
+    .map((a) => ({ ...a, start: toPracticeLocalMs(Date.parse(a.starts_at)), end: toPracticeLocalMs(Date.parse(a.ends_at)) }))
     .filter((a) => !Number.isNaN(a.start) && !Number.isNaN(a.end));
   const byDay = new Map(hours.map((h) => [h.day, h.ranges]));
 

@@ -54,6 +54,39 @@ const DAY_NUM = new Intl.DateTimeFormat("fr-FR", { day: "numeric", timeZone: PRA
 const MONTH_KEY = new Intl.DateTimeFormat("en-CA", { year: "numeric", month: "2-digit", timeZone: PRACTICE_TZ });
 const HM = new Intl.DateTimeFormat("en-GB", { hour: "2-digit", minute: "2-digit", hourCycle: "h23", timeZone: PRACTICE_TZ });
 
+const PARTS = new Intl.DateTimeFormat("en-CA", {
+  year: "numeric", month: "2-digit", day: "2-digit",
+  hour: "2-digit", minute: "2-digit", second: "2-digit",
+  hourCycle: "h23", timeZone: PRACTICE_TZ,
+});
+
+function practiceParts(ms: number) {
+  const p = Object.fromEntries(PARTS.formatToParts(new Date(ms)).map((x) => [x.type, x.value]));
+  return { y: +p.year, mo: +p.month, d: +p.day, h: +p.hour, mi: +p.minute, s: +p.second };
+}
+
+/**
+ * An absence instant as the practice's wall-clock time, expressed in this
+ * runtime's local time — so it can be compared with slots built by
+ * `setHours()` on whatever machine runs the code.
+ *
+ * Slots and appointments are wall-clock times ("10:00"); absences are real
+ * instants. On a server running in UTC, comparing the two directly slid every
+ * absence an hour early (10:00–16:30 in Tunis blocked 09:00–15:30).
+ */
+export function toPracticeLocalMs(instantMs: number): number {
+  const p = practiceParts(instantMs);
+  return new Date(p.y, p.mo - 1, p.d, p.h, p.mi, p.s).getTime();
+}
+
+/** A practice wall-clock time ("2026-10-05T10:00") → the real instant. */
+export function practiceWallToInstant(wall: string): number {
+  const guess = Date.parse(`${wall.length === 16 ? `${wall}:00` : wall}Z`);
+  const p = practiceParts(guess);
+  const offset = Date.UTC(p.y, p.mo - 1, p.d, p.h, p.mi, p.s) - guess;
+  return guess - offset;
+}
+
 function isMidnight(d: Date): boolean {
   return HM.format(d) === "00:00";
 }

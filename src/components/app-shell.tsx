@@ -1,9 +1,10 @@
 "use client";
 
-import { useState } from "react";
+import { useRef, useState } from "react";
 
 import { AppHeader } from "@/components/app-header";
 import { AppSidebar } from "@/components/app-sidebar";
+import { ScrollToTop } from "@/components/public/scroll-to-top";
 import type { Staff } from "@/lib/supabase/server";
 
 /**
@@ -26,13 +27,17 @@ export function AppShell({
   children: React.ReactNode;
 }) {
   const [mobileOpen, setMobileOpen] = useState(false);
+  const mainRef = useRef<HTMLElement>(null);
 
   return (
     <div className="flex min-h-screen bg-background">
       <AppSidebar mobileOpen={mobileOpen} onMobileClose={() => setMobileOpen(false)} />
       <div className="flex min-w-0 flex-1 flex-col">
         <AppHeader staff={staff} onMenuClick={() => setMobileOpen(true)} />
-        <main className="flex-1 px-4 py-6 sm:px-6 lg:px-8">{children}</main>
+        <main ref={mainRef} className="flex-1 px-4 py-6 sm:px-6 lg:px-8">
+          {children}
+        </main>
+        <ScrollToTop showAfter={250} centerOn={mainRef} />
       </div>
     </div>
   );
