@@ -16,6 +16,7 @@ import {
   WifiOff,
 } from "lucide-react";
 
+import { appScreen } from "@/lib/app-screens";
 import { cn } from "@/lib/utils";
 
 /**
@@ -29,43 +30,43 @@ import { cn } from "@/lib/utils";
 
 const SLIDES = [
   {
-    src: "/app/tableau-de-bord.jpg",
+    src: appScreen("tableau-de-bord"),
     label: "Tableau de bord",
     icon: LayoutDashboard,
     text: "Patients, consultations et rendez-vous du jour, d'un coup d'œil.",
   },
   {
-    src: "/app/patients.jpg",
+    src: appScreen("patients"),
     label: "Patients",
     icon: Users,
     text: "Tous vos dossiers, retrouvés en tapant un nom ou un numéro.",
   },
   {
-    src: "/app/consultations.jpg",
+    src: appScreen("consultations"),
     label: "Consultations",
     icon: Stethoscope,
-    text: "L'historique de chaque patient et son résumé clinique, d'un coup d'œil.",
+    text: "L'historique de chaque patient, son résumé clinique, et les paramètres propres à votre spécialité.",
   },
   {
-    src: "/app/analyses.jpg",
+    src: appScreen("analyses"),
     label: "Analyses",
     icon: FlaskConical,
     text: "Résultats en vert, orange ou rouge selon le profil du patient ; bilans scannés lus automatiquement.",
   },
   {
-    src: "/app/exploration.jpg",
+    src: appScreen("exploration"),
     label: "Explorations",
     icon: ClipboardList,
     text: "Radiologie, cardiologie, biopsies… rangées par spécialité.",
   },
   {
-    src: "/app/rendez-vous.jpg",
+    src: appScreen("rendez-vous"),
     label: "Rendez-vous",
     icon: CalendarDays,
     text: "Vues jour, semaine et mois, synchronisées avec le secrétariat, et un rappel avant chaque patient.",
   },
   {
-    src: "/app/formulaires.jpg",
+    src: appScreen("formulaires"),
     label: "Formulaires CNAM",
     icon: FileText,
     text: "BS, AP1 et APCI remplis et imprimés sur le formulaire papier.",

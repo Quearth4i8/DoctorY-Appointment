@@ -21,6 +21,7 @@ import {
   formatReleaseDate,
   installerName,
 } from "@/lib/desktop-releases";
+import { appScreen } from "@/lib/app-screens";
 import { cn } from "@/lib/utils";
 
 export const metadata: Metadata = {
@@ -125,7 +126,7 @@ export default function DownloadPage() {
                 </div>
                 <div className="relative aspect-[16/10] overflow-hidden rounded-xl">
                   <Image
-                    src="/app/tableau-de-bord.jpg"
+                    src={appScreen("tableau-de-bord")}
                     alt="Le tableau de bord de l'application DoctorY"
                     fill
                     priority
