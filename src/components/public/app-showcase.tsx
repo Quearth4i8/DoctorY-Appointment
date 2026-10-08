@@ -10,7 +10,6 @@ import {
   Download,
   FileText,
   FlaskConical,
-  Landmark,
   LayoutDashboard,
   Stethoscope,
   Users,
@@ -70,12 +69,6 @@ const SLIDES = [
     label: "Formulaires CNAM",
     icon: FileText,
     text: "BS, AP1 et APCI remplis et imprimés sur le formulaire papier.",
-  },
-  {
-    src: "/app/fiscalite.jpg",
-    label: "Fiscalité",
-    icon: Landmark,
-    text: "TVA, retenues à la source et impôt sur le revenu calculés à partir de votre activité.",
   },
 ] as const;
 
@@ -145,7 +138,7 @@ export function AppShowcase({
 
             <p className="max-w-xl text-[0.98rem] leading-relaxed text-background/70">
               Dossiers patients, consultations, analyses, ordonnances, formulaires
-              CNAM, agenda et fiscalité : DoctorY rassemble votre quotidien sur votre ordinateur, et
+              CNAM et agenda : DoctorY rassemble votre quotidien sur votre ordinateur, et
               relie votre agenda aux demandes de rendez-vous reçues sur ce site.
             </p>
 
