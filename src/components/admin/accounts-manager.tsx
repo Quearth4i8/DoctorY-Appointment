@@ -3,7 +3,7 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { formatDistanceToNow } from "date-fns";
 import { fr } from "date-fns/locale";
-import { Globe, Loader2, UserX, WifiOff } from "lucide-react";
+import { Globe, Loader2, Trash2, UserX, WifiOff } from "lucide-react";
 import { toast } from "sonner";
 
 import { Badge } from "@/components/ui/badge";
@@ -20,8 +20,11 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { useConfirm } from "@/components/ui/confirm-dialog";
 import {
   AdminApiError,
+  deleteDoctor,
+  deleteUser,
   fetchDoctors,
   fetchStaff,
+  fetchUsers,
   reassignStaff,
   revokeStaff,
   type AdminDoctor,
@@ -31,7 +34,17 @@ import { cn } from "@/lib/utils";
 /** Radix Select has no concept of an empty value, so "unbound" needs a token. */
 const UNBOUND = "__unbound__";
 
-function DoctorsTable({ doctors, loading }: { doctors: AdminDoctor[] | undefined; loading: boolean }) {
+function DoctorsTable({
+  doctors,
+  loading,
+  onDelete,
+  deleting,
+}: {
+  doctors: AdminDoctor[] | undefined;
+  loading: boolean;
+  onDelete: (d: AdminDoctor) => void;
+  deleting: string | null;
+}) {
   return (
     <Card className="border-border/70">
       <CardHeader>
@@ -56,7 +69,8 @@ function DoctorsTable({ doctors, loading }: { doctors: AdminDoctor[] | undefined
                   <th className="py-3 pr-4">Ville</th>
                   <th className="py-3 pr-4">Secrétaires</th>
                   <th className="py-3 pr-4">Publié</th>
-                  <th className="py-3 pr-4 sm:pr-6">Application</th>
+                  <th className="py-3 pr-4">Application</th>
+                  <th className="py-3 pr-2 text-right sm:pr-6">Actions</th>
                 </tr>
               </thead>
               <tbody>
@@ -83,7 +97,7 @@ function DoctorsTable({ doctors, loading }: { doctors: AdminDoctor[] | undefined
                         {d.is_published ? "Publié" : "Brouillon"}
                       </Badge>
                     </td>
-                    <td className="py-3 pr-4 sm:pr-6">
+                    <td className="py-3 pr-4">
                       <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
                         {d.paired ? (
                           <Globe className="h-3.5 w-3.5 text-ok-foreground" />
@@ -95,6 +109,23 @@ function DoctorsTable({ doctors, loading }: { doctors: AdminDoctor[] | undefined
                             ? `vue ${formatDistanceToNow(new Date(d.remote_seen_at), { addSuffix: true, locale: fr })}`
                             : "liée"
                           : "non liée"}
+                      </div>
+                    </td>
+                    <td className="py-3 pr-2 sm:pr-6">
+                      <div className="flex justify-end">
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          title="Supprimer ce cabinet"
+                          disabled={deleting === d.id}
+                          onClick={() => onDelete(d)}
+                        >
+                          {deleting === d.id ? (
+                            <Loader2 className="h-4 w-4 animate-spin" />
+                          ) : (
+                            <Trash2 className="h-4 w-4 text-destructive" />
+                          )}
+                        </Button>
                       </div>
                     </td>
                   </tr>
@@ -133,7 +164,67 @@ export function AccountsManager() {
       toast.error(err instanceof AdminApiError ? err.message : "Réaffectation impossible."),
   });
 
+  const { data: users, isLoading: loadingUsers } = useQuery({
+    queryKey: ["admin-users"],
+    queryFn: fetchUsers,
+  });
+  // Logins no practice holds: abandoned signups, accounts whose access was
+  // revoked. Staff are already listed, with their practice, above.
+  const loose = users?.filter((u) => !u.role) ?? [];
+
+  const refreshAll = () => {
+    qc.invalidateQueries({ queryKey: ["admin-staff"] });
+    qc.invalidateQueries({ queryKey: ["admin-doctors"] });
+    qc.invalidateQueries({ queryKey: ["admin-users"] });
+  };
+
+  const removeDoctor = useMutation({
+    mutationFn: (id: string) => deleteDoctor(id),
+    onSuccess: () => {
+      toast.success("Cabinet supprimé.");
+      refreshAll();
+    },
+    onError: (err) =>
+      toast.error(err instanceof AdminApiError ? err.message : "Suppression impossible."),
+  });
+
+  const removeUser = useMutation({
+    mutationFn: (userId: string) => deleteUser(userId),
+    onSuccess: () => {
+      toast.success("Compte supprimé.");
+      refreshAll();
+    },
+    onError: (err) =>
+      toast.error(err instanceof AdminApiError ? err.message : "Suppression impossible."),
+  });
+
   const confirm = useConfirm();
+
+  async function askDeleteDoctor(d: AdminDoctor) {
+    const name = `${d.title} ${d.full_name}`.trim();
+    const ok = await confirm({
+      title: `Supprimer ${name} ?`,
+      description:
+        "Le cabinet est effacé du site avec ses patients, rendez-vous, demandes et sa fiche dans l'annuaire" +
+        (d.staff_count
+          ? `, ainsi que ${d.staff_count} compte${d.staff_count > 1 ? "s" : ""} secrétariat`
+          : "") +
+        ". Les données sur l'ordinateur du médecin ne sont pas touchées ; si son application tourne encore, elle recrée un cabinet vide à sa prochaine connexion.",
+      confirmLabel: "Supprimer",
+      destructive: true,
+    });
+    if (ok) removeDoctor.mutate(d.id);
+  }
+
+  async function askDeleteUser(userId: string, label: string) {
+    const ok = await confirm({
+      title: "Supprimer ce compte ?",
+      description: `Le compte de connexion de ${label} est supprimé définitivement. Il faudra s'inscrire à nouveau pour revenir.`,
+      confirmLabel: "Supprimer",
+      destructive: true,
+    });
+    if (ok) removeUser.mutate(userId);
+  }
   const revoke = useMutation({
     mutationFn: (userId: string) => revokeStaff(userId),
     onSuccess: () => {
@@ -156,7 +247,12 @@ export function AccountsManager() {
         </p>
       </div>
 
-      <DoctorsTable doctors={doctors} loading={loadingDoctors} />
+      <DoctorsTable
+        doctors={doctors}
+        loading={loadingDoctors}
+        onDelete={askDeleteDoctor}
+        deleting={removeDoctor.isPending ? (removeDoctor.variables ?? null) : null}
+      />
 
       <Card className="border-border/70">
         <CardHeader>
@@ -240,6 +336,85 @@ export function AccountsManager() {
                             ) : (
                               <UserX className="h-4 w-4 text-muted-foreground" />
                             )}
+                          </Button>
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            title="Supprimer le compte"
+                            disabled={removeUser.isPending && removeUser.variables === s.user_id}
+                            onClick={() => askDeleteUser(s.user_id, s.full_name || s.email)}
+                          >
+                            <Trash2 className="h-4 w-4 text-destructive" />
+                          </Button>
+                        </div>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </CardContent>
+      </Card>
+
+      <Card className="border-border/70">
+        <CardHeader>
+          <CardTitle className="text-base">Comptes sans cabinet</CardTitle>
+          <p className="text-sm text-muted-foreground">
+            Connexions qu&apos;aucun cabinet ne détient : inscriptions abandonnées, accès révoqués.
+          </p>
+        </CardHeader>
+        <CardContent className="p-0">
+          {loadingUsers ? (
+            <div className="space-y-2 p-6">
+              <Skeleton className="h-10 w-full" />
+            </div>
+          ) : !loose.length ? (
+            <p className="px-6 py-10 text-center text-sm text-muted-foreground">
+              Aucun compte isolé.
+            </p>
+          ) : (
+            <div className="scrollbar-slim overflow-x-auto">
+              <table className="w-full min-w-[720px] border-collapse text-left">
+                <thead>
+                  <tr className="border-b border-border text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                    <th className="py-3 pl-4 pr-4 sm:pl-6">Compte</th>
+                    <th className="py-3 pr-4">Créé</th>
+                    <th className="py-3 pr-4">Dernière connexion</th>
+                    <th className="py-3 pr-4">Email</th>
+                    <th className="py-3 pr-2 text-right sm:pr-6">Actions</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {loose.map((u) => (
+                    <tr key={u.user_id} className="border-b border-border/60 last:border-0 hover:bg-secondary/40">
+                      <td className="py-3 pl-4 pr-4 sm:pl-6">
+                        <p className="font-medium text-foreground">{u.full_name || "Sans nom"}</p>
+                        <p className="text-xs text-muted-foreground">{u.email}</p>
+                      </td>
+                      <td className="py-3 pr-4 text-sm text-muted-foreground">
+                        {formatDistanceToNow(new Date(u.created_at), { addSuffix: true, locale: fr })}
+                      </td>
+                      <td className="py-3 pr-4 text-sm text-muted-foreground">
+                        {u.last_sign_in_at
+                          ? formatDistanceToNow(new Date(u.last_sign_in_at), { addSuffix: true, locale: fr })
+                          : "jamais"}
+                      </td>
+                      <td className="py-3 pr-4">
+                        <Badge variant={u.confirmed ? "secondary" : "outline"}>
+                          {u.confirmed ? "Confirmé" : "Non confirmé"}
+                        </Badge>
+                      </td>
+                      <td className="py-3 pr-2 sm:pr-6">
+                        <div className="flex justify-end">
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            title="Supprimer le compte"
+                            disabled={removeUser.isPending && removeUser.variables === u.user_id}
+                            onClick={() => askDeleteUser(u.user_id, u.full_name || u.email)}
+                          >
+                            <Trash2 className="h-4 w-4 text-destructive" />
                           </Button>
                         </div>
                       </td>

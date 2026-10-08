@@ -198,6 +198,14 @@ export async function listProviders(
   return (data ?? []) as AdminProviderRow[];
 }
 
+export async function deleteProvider(id: string): Promise<void> {
+  const { error } = await createClient().rpc("admin_delete_provider", {
+    p_admin_secret: adminSecret(),
+    p_provider_id: id,
+  });
+  if (error) throw new Error(error.message);
+}
+
 export async function getProvider(id: string): Promise<AdminProvider> {
   const { data, error } = await createClient().rpc("admin_get_provider", {
     p_admin_secret: adminSecret(),

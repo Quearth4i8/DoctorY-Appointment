@@ -102,6 +102,45 @@ export async function revokeStaff(userId: string): Promise<void> {
   if (error) throw new Error(error.message);
 }
 
+/** Every login, held by a practice or not. */
+export interface AdminUser {
+  user_id: string;
+  email: string;
+  full_name: string;
+  created_at: string;
+  last_sign_in_at: string | null;
+  confirmed: boolean;
+  role: string | null;
+  doctor_id: string | null;
+  doctor_name: string | null;
+}
+
+export async function listUsers(): Promise<AdminUser[]> {
+  const { data, error } = await createClient().rpc("admin_list_users", {
+    p_admin_secret: adminSecret(),
+  });
+  if (error) throw new Error(error.message);
+  return (data ?? []) as AdminUser[];
+}
+
+/** Deletes the login itself, not only its access. */
+export async function deleteUser(userId: string): Promise<void> {
+  const { error } = await createClient().rpc("admin_delete_user", {
+    p_admin_secret: adminSecret(),
+    p_user_id: userId,
+  });
+  if (error) throw new Error(error.message);
+}
+
+/** A practice, its website data and its staff's logins (see the migration). */
+export async function deleteDoctor(doctorId: string): Promise<void> {
+  const { error } = await createClient().rpc("admin_delete_doctor", {
+    p_admin_secret: adminSecret(),
+    p_doctor_id: doctorId,
+  });
+  if (error) throw new Error(error.message);
+}
+
 export async function appStats(): Promise<AdminAppStats> {
   const supabase = createClient();
   const { data, error } = await supabase.rpc("admin_app_stats", {

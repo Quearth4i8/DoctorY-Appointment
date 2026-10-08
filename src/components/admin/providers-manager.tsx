@@ -1,9 +1,13 @@
 "use client";
 
 import { useState } from "react";
-import { useQuery } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import Link from "next/link";
-import { AlertTriangle, Building2, Loader2, Search } from "lucide-react";
+import { AlertTriangle, Building2, Loader2, Search, Trash2 } from "lucide-react";
+import { toast } from "sonner";
+
+import { useConfirm } from "@/components/ui/confirm-dialog";
+import { AdminApiError, deleteProvider } from "@/lib/admin/client-api";
 
 import { PROVIDER_KIND_LABELS, type ProviderKind } from "@/types";
 import { cn } from "@/lib/utils";
@@ -40,6 +44,31 @@ export function ProvidersManager() {
   });
 
   const rows = data ?? [];
+
+  const qc = useQueryClient();
+  const confirm = useConfirm();
+  const remove = useMutation({
+    mutationFn: (id: string) => deleteProvider(id),
+    onSuccess: () => {
+      toast.success("Établissement supprimé.");
+      qc.invalidateQueries({ queryKey: ["admin-providers"] });
+    },
+    onError: (err) =>
+      toast.error(err instanceof AdminApiError ? err.message : "Suppression impossible."),
+  });
+
+  async function askDelete(r: Row) {
+    const ok = await confirm({
+      title: `Supprimer ${r.name} ?`,
+      description:
+        "La fiche disparaît de l'annuaire avec ses horaires, tarifs, spécialités, avis et gardes. " +
+        "Si elle provient d'un cabinet relié à l'application, supprimez plutôt ce cabinet dans Comptes : " +
+        "ses autres données restent sinon sur le site.",
+      confirmLabel: "Supprimer",
+      destructive: true,
+    });
+    if (ok) remove.mutate(r.id);
+  }
 
   return (
     <div className="flex flex-col gap-6">
@@ -106,10 +135,10 @@ export function ProvidersManager() {
             // What still blocks publication, said before they click into it.
             const missing = r.hours_count === 0;
             return (
-              <li key={r.id}>
+              <li key={r.id} className="flex items-stretch gap-2">
                 <Link
                   href={`/admin/etablissements/${r.id}`}
-                  className="flex flex-wrap items-center gap-3 rounded-xl border bg-card p-4 transition-colors hover:bg-secondary"
+                  className="flex min-w-0 flex-1 flex-wrap items-center gap-3 rounded-xl border bg-card p-4 transition-colors hover:bg-secondary"
                 >
                   <span className="min-w-0 flex-1">
                     <span className="flex flex-wrap items-center gap-2">
@@ -147,6 +176,19 @@ export function ProvidersManager() {
                     {r.is_published ? "Publiée" : "Brouillon"}
                   </span>
                 </Link>
+                <button
+                  type="button"
+                  title="Supprimer cet établissement"
+                  disabled={remove.isPending && remove.variables === r.id}
+                  onClick={() => askDelete(r)}
+                  className="flex w-12 shrink-0 items-center justify-center rounded-xl border bg-card text-destructive transition-colors hover:bg-danger-soft disabled:opacity-50"
+                >
+                  {remove.isPending && remove.variables === r.id ? (
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                  ) : (
+                    <Trash2 className="h-4 w-4" />
+                  )}
+                </button>
               </li>
             );
           })}

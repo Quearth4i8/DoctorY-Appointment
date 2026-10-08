@@ -117,6 +117,31 @@ export interface AdminStaff {
 
 export const fetchDoctors = () => request<AdminDoctor[]>("/api/admin/doctors");
 
+export const deleteDoctor = (id: string) =>
+  request<{ success: true }>(`/api/admin/doctors/${encodeURIComponent(id)}`, { method: "DELETE" });
+
+/** Every login, held by a practice or not. */
+export interface AdminUser {
+  user_id: string;
+  email: string;
+  full_name: string;
+  created_at: string;
+  last_sign_in_at: string | null;
+  confirmed: boolean;
+  role: string | null;
+  doctor_id: string | null;
+  doctor_name: string | null;
+}
+
+export const fetchUsers = () => request<AdminUser[]>("/api/admin/users");
+
+/** Deletes the login itself, not only its access. */
+export const deleteUser = (userId: string) =>
+  request<{ success: true }>(`/api/admin/users/${encodeURIComponent(userId)}`, { method: "DELETE" });
+
+export const deleteProvider = (id: string) =>
+  request<{ success: true }>(`/api/admin/providers/${encodeURIComponent(id)}`, { method: "DELETE" });
+
 export const fetchStaff = () => request<AdminStaff[]>("/api/admin/staff");
 
 export const reassignStaff = (userId: string, doctorId: string | null) =>
