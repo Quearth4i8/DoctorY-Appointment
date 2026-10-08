@@ -69,6 +69,12 @@ function DoctorsTable({ doctors, loading }: { doctors: AdminDoctor[] | undefined
                       <p className="text-xs text-muted-foreground">
                         {d.specialty || "—"} · {d.email || "sans email"}
                       </p>
+                      {(d.computer || d.license_key) && (
+                        <p className="text-xs text-muted-foreground/80">
+                          {d.computer ? `PC ${d.computer}` : "PC inconnu"}
+                          {d.license_key ? ` · licence ${d.license_key}` : ""}
+                        </p>
+                      )}
                     </td>
                     <td className="py-3 pr-4 text-sm text-muted-foreground">{d.city || "—"}</td>
                     <td className="py-3 pr-4 text-sm tnum text-muted-foreground">{d.staff_count}</td>

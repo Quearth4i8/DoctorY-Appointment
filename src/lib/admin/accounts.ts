@@ -16,6 +16,10 @@ export interface AdminDoctor {
   remote_seen_at: string | null;
   staff_count: number;
   created_at: string;
+  /** The licence this practice's app runs on, when the app registered it. */
+  license_key?: string | null;
+  /** Hostname of that computer, recorded when it activated the licence. */
+  computer?: string | null;
 }
 
 export interface AdminStaff {

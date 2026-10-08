@@ -214,7 +214,10 @@ export function DoctorSettingsForm({
   const openDays = days.filter((d) => d.open).length;
 
   async function save() {
-    if (!profile.full_name.trim()) {
+    // The title is shown in front of the name everywhere ("Dr Aziz"), so one
+    // typed into the name came out as "Dr Dr Aziz".
+    const fullName = profile.full_name.trim().replace(/^(dr\.?|docteur)\s+/i, "").trim();
+    if (!fullName) {
       toast.error("Le nom du médecin est obligatoire.");
       return;
     }
@@ -231,7 +234,7 @@ export function DoctorSettingsForm({
       .update({
         ...editable,
         phone: joinPhones(phones),
-        full_name: profile.full_name.trim(),
+        full_name: fullName,
         latitude: preview ? preview.lat : null,
         longitude: preview ? preview.lng : null,
         hours: toHours(days),

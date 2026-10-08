@@ -119,6 +119,13 @@ than one doctor.
 Add the Vercel domain to the Turnstile site's hostnames, or every submission is
 refused.
 
+In Supabase, **Authentication → URL Configuration**: set the **Site URL** to the
+Vercel domain and add `https://<vercel-domain>/**` (plus
+`http://localhost:3000/**` for local work) to **Redirect URLs**. The signup and
+email-change links ask to come back to `/auth/confirm`, but Supabase silently
+swaps any address missing from that list for the Site URL — left at its default,
+a secretary's confirmation link opens `localhost:3000`.
+
 ### Admin dashboard (/admin)
 
 Separate from everything above — a single-operator back office for issuing
