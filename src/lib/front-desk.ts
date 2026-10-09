@@ -268,6 +268,7 @@ function toAppointment(r: AppointmentRow): Appointment {
     duration_minutes: r.duration_minutes ?? 30,
     status: (r.status ?? "a_venir") as AppointmentStatus,
     notes: r.notes ?? null,
+    patient_numero_dossier: str(r.patients?.numero_dossier) || null,
   };
 }
 

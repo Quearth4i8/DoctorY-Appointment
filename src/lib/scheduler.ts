@@ -17,8 +17,13 @@ import type { AppointmentStatus } from "@/types";
 // Clinic working window shown on the grid.
 export const DAY_START_MIN = 8 * 60; // 08:00
 export const DAY_END_MIN = 20 * 60; // 20:00
-export const SLOT_MIN = 30; // grid granularity
-export const PX_PER_MIN = 1.4; // vertical scale of the grid
+// Quarter-hour cells: where a click books and a drop lands. Appointments as
+// short as ten minutes are common, so half-hour targets were too coarse.
+export const SLOT_MIN = 15; // grid granularity
+// An hour is 180px: a 30-minute visit is a 90px card with room for the name,
+// the dossier number, the times and a note; a quarter-hour still gets two
+// lines. (At 1.4 a half-hour was a 42px strip with one line of 11px text.)
+export const PX_PER_MIN = 3; // vertical scale of the grid
 export const SLOT_PX = SLOT_MIN * PX_PER_MIN;
 
 export const BACKEND_DT = "yyyy-MM-dd HH:mm:ss";
@@ -213,4 +218,28 @@ export function effectiveStatus(appt: {
     : "a_venir";
 }
 
-export const DURATION_OPTIONS = [15, 30, 45, 60, 90];
+/** One click away in the duration picker. Any other length can still be typed. */
+export const DURATION_OPTIONS = [5, 10, 15, 20, 25, 30, 40, 45, 60, 75, 90, 120];
+
+/** What the database accepts (appointments.duration_minutes check, and the
+ *  desktop API's AppointmentCreate). */
+export const DURATION_MIN = 5;
+export const DURATION_MAX = 480;
+
+export function clampDuration(minutes: number): number {
+  return Math.min(DURATION_MAX, Math.max(DURATION_MIN, Math.round(minutes)));
+}
+
+/** "10 min", "1 h", "1 h 30" — or "1h30" when `compact`. */
+export function durationLabel(minutes: number, compact = false): string {
+  if (minutes < 60) return `${minutes} min`;
+  const h = Math.floor(minutes / 60);
+  const m = minutes % 60;
+  if (!m) return `${h} h`;
+  const mm = String(m).padStart(2, "0");
+  return compact ? `${h}h${mm}` : `${h} h ${mm}`;
+}
+
+/** Start times offered when booking: every 5 minutes, so a ten-minute visit
+ *  can be followed straight away by the next one. */
+export const BOOKING_STEP_MIN = 5;

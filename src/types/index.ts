@@ -52,6 +52,9 @@ export type Appointment = {
   duration_minutes: number;
   status: AppointmentStatus;
   notes: string | null;
+  /** The patient's file number at the cabinet ("12/2026"), shown on the
+   *  agenda card; null until the doctor's app has assigned one. */
+  patient_numero_dossier?: string | null;
 };
 
 export type NewPatientInput = PatientAdminInput & {

@@ -27,18 +27,18 @@ import {
   buildApptDatetime,
   DAY_END_MIN,
   DAY_START_MIN,
-  DURATION_OPTIONS,
   minutesToLabel,
-  SLOT_MIN,
+  BOOKING_STEP_MIN,
 } from "@/lib/scheduler";
 import type { SafePatient } from "@/types";
 import { PatientPicker } from "./patient-picker";
+import { DurationPicker } from "./duration-picker";
 
 export type SlotTarget = { day: Date; minute: number };
 
 function timeOptions(): number[] {
   const out: number[] = [];
-  for (let m = DAY_START_MIN; m < DAY_END_MIN; m += SLOT_MIN) out.push(m);
+  for (let m = DAY_START_MIN; m < DAY_END_MIN; m += BOOKING_STEP_MIN) out.push(m);
   return out;
 }
 
@@ -154,21 +154,7 @@ export function NewAppointmentDialog({
             </div>
             <div className="space-y-1.5">
               <Label className="text-sm font-medium">Durée</Label>
-              <Select
-                value={String(duration)}
-                onValueChange={(v) => setDuration(Number(v))}
-              >
-                <SelectTrigger className="tnum">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  {DURATION_OPTIONS.map((d) => (
-                    <SelectItem key={d} value={String(d)} className="tnum">
-                      {d} min
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+              <DurationPicker value={duration} onChange={setDuration} />
             </div>
           </div>
           )}

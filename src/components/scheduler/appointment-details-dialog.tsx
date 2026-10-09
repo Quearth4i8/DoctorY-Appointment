@@ -23,13 +23,6 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { DatePicker } from "@/components/ui/date-picker";
@@ -43,13 +36,14 @@ import {
   updateAppointment,
 } from "@/lib/client-api";
 import {
-  DURATION_OPTIONS,
+  durationLabel,
   effectiveStatus,
   isPastDay,
   parseApptDate,
   statusMeta,
   todayKey,
 } from "@/lib/scheduler";
+import { DurationPicker } from "./duration-picker";
 import { cn } from "@/lib/utils";
 import type { Appointment, AppointmentStatus } from "@/types";
 
@@ -188,21 +182,7 @@ export function AppointmentDetailsDialog({
 
             <div className="space-y-1.5">
               <Label className="text-sm font-medium">Durée</Label>
-              <Select
-                value={String(duration)}
-                onValueChange={(v) => setDuration(Number(v))}
-              >
-                <SelectTrigger className="tnum">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  {DURATION_OPTIONS.map((d) => (
-                    <SelectItem key={d} value={String(d)} className="tnum">
-                      {d} min
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+              <DurationPicker value={duration} onChange={setDuration} />
             </div>
 
             <div className="space-y-1.5">
@@ -251,7 +231,7 @@ export function AppointmentDetailsDialog({
               </p>
               <p className="flex items-center gap-2">
                 <Clock className="h-4 w-4 text-muted-foreground" />
-                {format(start, "HH:mm")} · {appointment.duration_minutes} min
+                {format(start, "HH:mm")} · {durationLabel(appointment.duration_minutes)}
               </p>
               {appointment.notes ? (
                 <p className="flex items-start gap-2">

@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import {
   DndContext,
   DragOverlay,
@@ -16,12 +16,13 @@ import {
 } from "@dnd-kit/core";
 import { format, isSameDay, isToday } from "date-fns";
 import { fr } from "date-fns/locale";
-import { Plus } from "lucide-react";
+import { Plus, StickyNote } from "lucide-react";
 
 import { cn } from "@/lib/utils";
 import {
   DAY_END_MIN,
   DAY_START_MIN,
+  durationLabel,
   effectiveStatus,
   fmtDateKey,
   isPastDay,
@@ -50,6 +51,9 @@ type Positioned = {
   startMin: number;
 };
 
+/** A block is never drawn shorter than this, so its one line stays readable. */
+const MIN_BLOCK_PX = 30;
+
 /** Lay out a day's appointments into side-by-side lanes when they overlap. */
 function layoutDay(appts: Appointment[]): Positioned[] {
   const items = appts
@@ -57,7 +61,11 @@ function layoutDay(appts: Appointment[]): Positioned[] {
       const d = parseApptDate(appt.appointment_datetime);
       const startMin = d.getHours() * 60 + d.getMinutes();
       const endMin = startMin + (appt.duration_minutes || 30);
-      return { appt, startMin, endMin };
+      // Lanes go by how long the block is *drawn*: a 10-minute visit is
+      // drawn as tall as ~16 minutes, and would otherwise cover the one
+      // booked right after it instead of sitting beside it.
+      const drawnEnd = Math.max(endMin, startMin + Math.ceil(MIN_BLOCK_PX / PX_PER_MIN));
+      return { appt, startMin, endMin: drawnEnd, realEnd: endMin };
     })
     .sort((a, b) => a.startMin - b.startMin || a.endMin - b.endMin);
 
@@ -83,11 +91,11 @@ function layoutDay(appts: Appointment[]): Positioned[] {
     const lanes = laneEnds.length;
     for (const it of cluster) {
       const clampedStart = Math.max(it.startMin, DAY_START_MIN);
-      const clampedEnd = Math.min(it.endMin, DAY_END_MIN);
+      const clampedEnd = Math.min(it.realEnd, DAY_END_MIN);
       out.push({
         appt: it.appt,
         top: (clampedStart - DAY_START_MIN) * PX_PER_MIN,
-        height: Math.max((clampedEnd - clampedStart) * PX_PER_MIN, 22),
+        height: Math.max((clampedEnd - clampedStart) * PX_PER_MIN, MIN_BLOCK_PX),
         lane: laneOf.get(it.appt) ?? 0,
         lanes,
         startMin: it.startMin,
@@ -104,6 +112,65 @@ function layoutDay(appts: Appointment[]): Positioned[] {
   }
   flush();
   return out;
+}
+
+/**
+ * What a block says, by how much room it has. Everything is on one line for a
+ * short visit; a longer one puts the patient first, in bold, with the times
+ * under it, then the note and the status as the height allows.
+ */
+function BlockContent({ appt, height }: { appt: Appointment; height: number }) {
+  const meta = statusMeta(effectiveStatus(appt));
+  const start = parseApptDate(appt.appointment_datetime);
+  const duration = appt.duration_minutes || 30;
+  const end = new Date(start.getTime() + duration * 60_000);
+  const name = appt.patient_name || "Rendez-vous";
+  const dossier = appt.patient_numero_dossier ? (
+    <span
+      className="shrink-0 rounded-md bg-card/70 px-1.5 py-0.5 font-mono text-[10.5px] font-bold leading-none tracking-tight ring-1 ring-inset ring-black/[0.08] dark:ring-white/10"
+      title="N° de dossier"
+    >
+      N°&nbsp;{appt.patient_numero_dossier}
+    </span>
+  ) : null;
+
+  if (height < 40) {
+    return (
+      // The name is what she scans for: it keeps its room; the dossier number
+      // stays on the right.
+      <div className="flex h-full min-w-0 items-center gap-1.5 overflow-hidden text-[12.5px] leading-none">
+        <span className="shrink-0 font-bold tnum">{format(start, "HH:mm")}</span>
+        <span className="min-w-[3rem] flex-1 truncate font-semibold">{name}</span>
+        {dossier}
+      </div>
+    );
+  }
+
+  return (
+    <div className={cn("flex h-full min-w-0 flex-col", height < 60 ? "gap-0.5" : "gap-1")}>
+      <div className="flex min-w-0 items-start gap-2">
+        <p className="min-w-0 flex-1 truncate text-[14px] font-bold leading-tight">{name}</p>
+        {dossier}
+      </div>
+      <p className="truncate text-[12px] font-medium leading-snug opacity-80 tnum">
+        {format(start, "HH:mm")} – {format(end, "HH:mm")}
+        <span className="mx-1 opacity-50">·</span>
+        {durationLabel(duration)}
+      </p>
+      {height >= 66 && appt.notes ? (
+        <p className="flex min-w-0 items-center gap-1 text-[11.5px] leading-snug opacity-75">
+          <StickyNote className="h-3 w-3 shrink-0" />
+          <span className="truncate">{appt.notes}</span>
+        </p>
+      ) : null}
+      {height >= 110 ? (
+        <span className="mt-auto inline-flex items-center gap-1 self-start text-[10.5px] font-semibold opacity-80">
+          <span className={cn("h-1.5 w-1.5 rounded-full", meta.dot)} />
+          {meta.label}
+        </span>
+      ) : null}
+    </div>
+  );
 }
 
 function AppointmentBlock({
@@ -124,8 +191,10 @@ function AppointmentBlock({
     disabled: locked,
   });
   const meta = statusMeta(effectiveStatus(pos.appt));
-  const d = parseApptDate(pos.appt.appointment_datetime);
   const widthPct = 100 / pos.lanes;
+  const compact = pos.height < 40;
+  const start = parseApptDate(pos.appt.appointment_datetime);
+  const duration = pos.appt.duration_minutes || 30;
 
   return (
     <div
@@ -134,31 +203,48 @@ function AppointmentBlock({
       {...attributes}
       onClick={() => onOpen(pos.appt)}
       style={{
-        top: pos.top,
-        height: pos.height,
-        left: `calc(${pos.lane * widthPct}% + 3px)`,
-        width: `calc(${widthPct}% - 6px)`,
+        // One pixel of air above and below, so back-to-back visits read as
+        // two blocks rather than one long one.
+        top: pos.top + 1,
+        height: pos.height - 2,
+        left: `calc(${pos.lane * widthPct}% + 4px)`,
+        width: `calc(${widthPct}% - 8px)`,
       }}
       className={cn(
-        "group/appt absolute z-10 touch-none select-none overflow-hidden rounded-lg border py-1 pl-3 pr-2 text-left shadow-sm transition-all duration-150 ease-spring",
+        "group/appt absolute z-10 touch-none select-none overflow-hidden rounded-lg border pl-3.5 pr-2 text-left shadow-sm transition-all duration-150 ease-spring",
+        // A quarter-hour (45px) still fits the name and the times.
+        compact ? "py-0" : pos.height < 60 ? "py-1" : "py-2",
         locked
           ? "cursor-pointer"
-          : "cursor-grab hover:-translate-y-px hover:shadow-card-hover active:cursor-grabbing",
+          : "cursor-grab hover:z-[11] hover:-translate-y-px hover:shadow-card-hover active:cursor-grabbing",
         meta.block,
         (isDragging || dragging) && "opacity-40",
       )}
+      title={[
+        pos.appt.patient_name || "Rendez-vous",
+        pos.appt.patient_numero_dossier ? `N° ${pos.appt.patient_numero_dossier}` : null,
+        format(start, "HH:mm"),
+        durationLabel(duration),
+        pos.appt.notes,
+      ].filter(Boolean).join(" · ")}
     >
-      <span className={cn("absolute inset-y-0 left-0 w-1 rounded-l-lg", meta.bar)} />
-      <p className="truncate text-[11px] font-semibold leading-tight tnum">
-        {format(d, "HH:mm")}
-        <span className="mx-1 opacity-40">·</span>
-        <span className="font-medium">{pos.appt.patient_name || "RDV"}</span>
-      </p>
-      {pos.height > 34 && pos.appt.notes ? (
-        <p className="truncate text-[10px] font-medium opacity-70">
-          {pos.appt.notes}
-        </p>
-      ) : null}
+      <span className={cn("absolute inset-y-0 left-0 w-[5px] rounded-l-lg", meta.bar)} />
+      <BlockContent appt={pos.appt} height={pos.height} />
+    </div>
+  );
+}
+
+/** Where the clock is, on today's column: the practice's wall-clock time. */
+function NowLine({ nowMin }: { nowMin: number }) {
+  if (nowMin < DAY_START_MIN || nowMin > DAY_END_MIN) return null;
+  return (
+    <div
+      aria-hidden
+      className="pointer-events-none absolute inset-x-0 z-[12] flex items-center"
+      style={{ top: (nowMin - DAY_START_MIN) * PX_PER_MIN - 1 }}
+    >
+      <span className="-ml-[5px] h-2.5 w-2.5 shrink-0 rounded-full bg-danger shadow-[0_0_0_2px_hsl(var(--card))]" />
+      <span className="h-0.5 flex-1 bg-danger" />
     </div>
   );
 }
@@ -181,17 +267,25 @@ function SlotCell({
     id: `${dateKey}|${minute}`,
     disabled: closed,
   });
-  const onHour = minute % 60 === 0;
+  // Each cell draws the line at its own start, so the solid line is where the
+  // hour label is. (Bottom borders put the hour's line at :30.) Hours solid,
+  // half-hours dashed, quarters only felt on hover.
+  const line =
+    minute === DAY_START_MIN
+      ? "border-t-transparent"
+      : minute % 60 === 0
+        ? "border-t-border"
+        : minute % 30 === 0
+          ? "border-dashed border-t-border/60"
+          : "border-t-transparent";
   return (
     <div
       ref={setNodeRef}
       onClick={closed ? undefined : () => onCreate(dateKey, minute)}
       style={{ height: SLOT_PX }}
       className={cn(
-        "group relative border-b transition-colors",
-        // Hours anchor the eye; half-hours only need to be felt, so they are
-        // drawn faint rather than dashed — dashes read as busy at this density.
-        onHour ? "border-border/70" : "border-border/30",
+        "group relative border-t transition-colors",
+        line,
         closed
           ? "cursor-not-allowed"
           : isOver
@@ -200,7 +294,10 @@ function SlotCell({
       )}
     >
       {closed ? null : (
-        <Plus className="absolute right-1.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-primary opacity-0 transition-opacity group-hover:opacity-50" />
+        <span className="pointer-events-none absolute inset-0 flex items-center gap-1 px-2 text-[11px] font-semibold text-primary opacity-0 transition-opacity group-hover:opacity-70 tnum">
+          <Plus className="h-3.5 w-3.5" />
+          {minutesToLabel(minute)}
+        </span>
       )}
     </div>
   );
@@ -232,6 +329,46 @@ export function WeekGrid({
   );
 
   const slots = slotMinutes();
+
+  // The practice's wall clock, to the minute, for the "now" line.
+  const [now, setNow] = useState(() => new Date(toPracticeLocalMs(Date.now())));
+  useEffect(() => {
+    const id = setInterval(() => setNow(new Date(toPracticeLocalMs(Date.now()))), 30_000);
+    return () => clearInterval(id);
+  }, []);
+  const nowMin = now.getHours() * 60 + now.getMinutes();
+  const showsToday = days.some((d) => isSameDay(d, now));
+
+  // Open on the part of the day that matters: an hour before now when today
+  // is on screen, otherwise the first appointment, otherwise the morning.
+  const scrollRef = useRef<HTMLDivElement>(null);
+  const firstKey = days.length ? fmtDateKey(days[0]) : "";
+  const lastKey = useRef<string | null>(null);
+  useEffect(() => {
+    const box = scrollRef.current;
+    if (!box) return;
+    let target = DAY_START_MIN;
+    if (showsToday) target = nowMin - 60;
+    else {
+      const starts = appointments.map((a) => {
+        const d = parseApptDate(a.appointment_datetime);
+        return d.getHours() * 60 + d.getMinutes();
+      });
+      if (starts.length) target = Math.min(...starts) - 30;
+    }
+    target = Math.min(Math.max(target, DAY_START_MIN), DAY_END_MIN);
+    // A jump on first load (nothing to animate from), a glide only when the
+    // week or day actually changed — a re-run for the same days jumps too.
+    const moved = lastKey.current !== null && lastKey.current !== firstKey;
+    lastKey.current = firstKey;
+    box.scrollTo({
+      top: (target - DAY_START_MIN) * PX_PER_MIN,
+      behavior: moved ? "smooth" : "auto",
+    });
+    // Only when the days change (a new week, a new view) — not on every
+    // refresh, which would yank the agenda away from where she was looking.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [firstKey, days.length]);
 
   const byDay = useMemo(() => {
     const map = new Map<string, Appointment[]>();
@@ -293,7 +430,7 @@ export function WeekGrid({
           height down inside the card, over the first rows of the day, with an
           empty band above it. Scrolling inside the card, the row sticks at
           top-0 and the hours at left-0, like any calendar. */}
-      <div className="max-h-[calc(100dvh-var(--app-header-h)-2rem)] overflow-auto scrollbar-slim rounded-2xl border border-border/70 bg-card shadow-card">
+      <div ref={scrollRef} className="max-h-[calc(100dvh-var(--app-header-h)-2rem)] overflow-auto scrollbar-slim rounded-2xl border border-border/70 bg-card shadow-card">
         <div style={{ minWidth }}>
           {/* Header row: day names. Opaque — the tint is layered over the
               card colour rather than being see-through — so appointments
@@ -308,6 +445,9 @@ export function WeekGrid({
             {days.map((day) => {
               const past = isPastDay(day);
               const today = isToday(day);
+              const count = (byDay.get(fmtDateKey(day)) ?? []).filter(
+                (a) => effectiveStatus(a) !== "annule",
+              ).length;
               return (
                 <div
                   key={fmtDateKey(day)}
@@ -339,6 +479,14 @@ export function WeekGrid({
                   >
                     {format(day, "d")}
                   </span>
+                  <span
+                    className={cn(
+                      "text-[10.5px] font-medium tnum",
+                      count ? "text-primary" : "text-muted-foreground/50",
+                    )}
+                  >
+                    {count ? `${count} rdv` : "—"}
+                  </span>
                 </div>
               );
             })}
@@ -360,10 +508,13 @@ export function WeekGrid({
                   style={{ height: SLOT_PX }}
                   className="relative border-b border-transparent"
                 >
-                  {m % 60 === 0 ? (
+                  {m % 30 === 0 ? (
                     <span
                       className={cn(
-                        "absolute right-2.5 text-[0.7rem] font-medium tabular-nums text-muted-foreground/80",
+                        "absolute right-2.5 tabular-nums",
+                        m % 60 === 0
+                          ? "text-[0.78rem] font-semibold text-foreground/75"
+                          : "text-[0.66rem] font-medium text-muted-foreground/60",
                         // Every hour label straddles its gridline. The first one
                         // has no row above it to straddle into: half of it would
                         // land outside the grid, where the scroll box and the
@@ -408,6 +559,8 @@ export function WeekGrid({
 
                   <AbsenceBands day={day} absences={absences} />
 
+                  {isSameDay(day, now) ? <NowLine nowMin={nowMin} /> : null}
+
                   {/* Appointment blocks */}
                   {positioned.map((pos) => (
                     <AppointmentBlock
@@ -428,23 +581,17 @@ export function WeekGrid({
         {activeAppt ? (
           <div
             className={cn(
-              "relative overflow-hidden rounded-lg border py-1 pl-3 pr-2 text-left shadow-modal",
+              "relative w-56 overflow-hidden rounded-lg border py-1.5 pl-3.5 pr-2 text-left shadow-modal",
               statusMeta(effectiveStatus(activeAppt)).block,
             )}
           >
             <span
               className={cn(
-                "absolute inset-y-0 left-0 w-1 rounded-l-lg",
+                "absolute inset-y-0 left-0 w-[5px] rounded-l-lg",
                 statusMeta(effectiveStatus(activeAppt)).bar,
               )}
             />
-            <p className="text-[11px] font-semibold leading-tight tnum">
-              {format(parseApptDate(activeAppt.appointment_datetime), "HH:mm")}
-              <span className="mx-1 opacity-40">·</span>
-              <span className="font-medium">
-                {activeAppt.patient_name || "RDV"}
-              </span>
-            </p>
+            <BlockContent appt={activeAppt} height={60} />
           </div>
         ) : null}
       </DragOverlay>

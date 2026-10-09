@@ -35,12 +35,13 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { ApiError, acceptRequest, searchPatients } from "@/lib/client-api";
 import {
-  DURATION_OPTIONS,
+  BOOKING_STEP_MIN,
   isPastDay,
   minutesToLabel,
   todayKey,
 } from "@/lib/scheduler";
 import { avatarColor, initials } from "@/lib/avatar";
+import { DurationPicker } from "@/components/scheduler/duration-picker";
 import { cn } from "@/lib/utils";
 import type { AppointmentRequest } from "@/types";
 
@@ -49,7 +50,7 @@ const NEW_PATIENT = "new";
 
 function timeOptions(): number[] {
   const out: number[] = [];
-  for (let m = 8 * 60; m < 19 * 60; m += 15) out.push(m);
+  for (let m = 8 * 60; m < 19 * 60; m += BOOKING_STEP_MIN) out.push(m);
   return out;
 }
 
@@ -322,21 +323,7 @@ export function AcceptRequestDialog({
             </div>
             <div className="space-y-1.5">
               <Label className="text-sm font-medium">Durée</Label>
-              <Select
-                value={String(duration)}
-                onValueChange={(v) => setDuration(Number(v))}
-              >
-                <SelectTrigger className="tnum">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  {DURATION_OPTIONS.map((d) => (
-                    <SelectItem key={d} value={String(d)} className="tnum">
-                      {d} min
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+              <DurationPicker value={duration} onChange={setDuration} />
             </div>
           </div>
 
