@@ -34,16 +34,17 @@ export type DesktopRelease = {
 export const RELEASES: DesktopRelease[] = [
   {
     version: "2.3.9",
-    date: "2026-10-25",
+    date: "2026-10-27",
     sizeMb: 165,
-    title: "Recherche globale, calculateurs médicaux et notes",
+    title: "Recherche globale, motifs en un clic et calculateurs médicaux",
     notes: [
       "Recherche globale depuis l'en-tête : patients, consultations, analyses, documents, rendez-vous et formulaires CNAM, en un clic.",
+      "Consultations et Graphiques s'ouvrent directement sur le choix du patient, avec une recherche au clavier (↑ ↓ Entrée).",
+      "Motif de consultation : les motifs fréquents de la spécialité se choisissent en un clic, et vous pouvez ajouter les vôtres.",
+      "Une page par spécialité, depuis le tableau de bord : chiffres, consultations par mois et patients suivis.",
       "Nouvelle page Calculateurs : IMC, poids idéal, surface corporelle, clairance (Cockcroft, CKD-EPI 2021), HOMA-IR, HbA1c, LDL et terme de grossesse.",
       "Nouvelle page Notes : pense-bêtes à organiser par glisser-déposer.",
-      "Mes papiers : vos en-têtes générés depuis votre profil ou importés, gérés depuis le Profil.",
-      "Consultations et graphiques classés par spécialité puis sous-spécialité.",
-      "L'application retient où vous en étiez sur chaque page tant qu'elle reste ouverte.",
+      "Mes papiers : vos papiers habituels par défaut, ou des en-têtes conçus par l'application depuis votre profil, ou vos propres papiers importés.",
       "Import des bilans scannés plus précis.",
     ],
     downloadable: true,
