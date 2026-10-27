@@ -45,6 +45,7 @@ export const RELEASES: DesktopRelease[] = [
       "Nouvelle page Calculateurs : IMC, poids idéal, surface corporelle, clairance (Cockcroft, CKD-EPI 2021), HOMA-IR, HbA1c, LDL et terme de grossesse.",
       "Nouvelle page Notes : pense-bêtes à organiser par glisser-déposer.",
       "Mes papiers : vos papiers habituels par défaut, ou des en-têtes conçus par l'application depuis votre profil, ou vos propres papiers importés.",
+      "Les ordonnances s'impriment en A5 sur une moitié de feuille A4, avec une ligne de coupe ; A5, A4 ou « A5 sur A4 » au choix pour chaque document.",
       "Import des bilans scannés plus précis.",
     ],
     downloadable: true,
