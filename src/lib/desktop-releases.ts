@@ -33,6 +33,22 @@ export type DesktopRelease = {
 
 export const RELEASES: DesktopRelease[] = [
   {
+    version: "2.3.9",
+    date: "2026-10-25",
+    sizeMb: 165,
+    title: "Recherche globale, calculateurs médicaux et notes",
+    notes: [
+      "Recherche globale depuis l'en-tête : patients, consultations, analyses, documents, rendez-vous et formulaires CNAM, en un clic.",
+      "Nouvelle page Calculateurs : IMC, poids idéal, surface corporelle, clairance (Cockcroft, CKD-EPI 2021), HOMA-IR, HbA1c, LDL et terme de grossesse.",
+      "Nouvelle page Notes : pense-bêtes à organiser par glisser-déposer.",
+      "Mes papiers : vos en-têtes générés depuis votre profil ou importés, gérés depuis le Profil.",
+      "Consultations et graphiques classés par spécialité puis sous-spécialité.",
+      "L'application retient où vous en étiez sur chaque page tant qu'elle reste ouverte.",
+      "Import des bilans scannés plus précis.",
+    ],
+    downloadable: true,
+  },
+  {
     version: "2.3.8",
     date: "2026-10-04",
     sizeMb: 164,
@@ -42,9 +58,7 @@ export const RELEASES: DesktopRelease[] = [
       "Une cloche de notifications signale les patients et rendez-vous ajoutés par le secrétariat, et les mises à jour.",
       "Rappel sonore quelques minutes avant chaque rendez-vous.",
       "Agenda repensé : vues jour, semaine et mois.",
-      "Résultats d'analyses en vert, orange ou rouge selon le profil du patient (diabétique, enceinte…).",
-      "Nouvelle page Fiscalité : TVA, retenues à la source et impôt sur le revenu calculés automatiquement.",
-    ],
+      "Résultats d'analyses en vert, orange ou rouge selon le profil du patient (diabétique, enceinte…).",    ],
     downloadable: true,
   },
   {
